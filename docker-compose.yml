@@ -1,0 +1,29 @@
+version: '3.7'
+services:
+  python-server:
+    container_name: python-server
+    hostname: flask
+    image: python-server:1.0.0
+    ports:
+      - '8000:5000'
+    networks:
+      - python-net
+    restart: always
+
+  ngrok:
+    container_name: ngrok
+    hostname: ngrok
+    image: ngrok/ngrok:3.1.0-debian
+    ports:
+      - '4040:4040'
+    command: "http 5000"
+    networks:
+      - python-net
+    restart: always
+
+networks:
+  git-net:
+    name: python-net
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: python-net
