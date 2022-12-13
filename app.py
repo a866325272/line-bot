@@ -23,9 +23,7 @@ def linebot():
         if type=='text':
             msg = json_data['events'][0]['message']['text']  # 取得 LINE 收到的文字訊息
             if msg == '雷達回波圖' or msg == '雷達回波':
-                print(0)
                 message = f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}'
-                print(1)
                 line_bot_api.reply_message(tk,ImageSendMessage(message,message))
                 #reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
             else:
