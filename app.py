@@ -6,4 +6,4 @@ def hello_world():
     return 'Hello, Docker!'
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0')
+    app.run(ssl_context='adhoc',host='0.0.0.0')
