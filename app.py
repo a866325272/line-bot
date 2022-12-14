@@ -89,7 +89,7 @@ def forecast(address):
 
 # 目前天氣函式
 def current_weather(address):
-    city_list, area_list, area_list2 = {}, {}, {} # 定義好待會要用的變數
+    city_list, city_list2, area_list, area_list2 = {}, {}, {}, {} # 定義好待會要用的變數
     msg = '找不到氣象資訊。'                         # 預設回傳訊息
 
     # 定義取得資料的函式
@@ -111,9 +111,9 @@ def current_weather(address):
             city_list[city]['temp'].append(temp)   # 記錄主要縣市裡鄉鎮區域的溫度 ( 串列格式 )
             city_list[city]['humd'].append(humd)   # 記錄主要縣市裡鄉鎮區域的濕度 ( 串列格式 )
             city_list[city]['r24'].append(r24)     # 記錄主要縣市裡鄉鎮區域的雨量 ( 串列格式 )
-            area_list[area]['temp'].append(temp)   # 記錄主要縣市裡鄉鎮區域的溫度 ( 串列格式 )
-            area_list[area]['humd'].append(humd)   # 記錄主要縣市裡鄉鎮區域的濕度 ( 串列格式 )
-            area_list[area]['r24'].append(r24)     # 記錄主要縣市裡鄉鎮區域的雨量 ( 串列格式 )
+            area_list[area]['temp'].append(temp)   # 記錄鄉鎮區域的溫度 ( 串列格式 )
+            area_list[area]['humd'].append(humd)   # 記錄鄉鎮區域的濕度 ( 串列格式 )
+            area_list[area]['r24'].append(r24)     # 記錄鄉鎮區域的雨量 ( 串列格式 )
 
     # 定義如果數值小於 0，回傳 False 的函式
     def check_data(e):
@@ -140,13 +140,19 @@ def current_weather(address):
         print(city_list)
         print(area_list)
         for i in city_list:
-            if i not in area_list2: # 將主要縣市裡的數值平均後，以主要縣市名稱為 key，再度儲存一次，如果找不到鄉鎮區域，就使用平均數值
-                area_list2[i] = {'temp':round(statistics.mean(city_list[i]['temp']),1),
+            if i not in city_list2: # 將主要縣市裡的數值平均後，以主要縣市名稱為 key，再度儲存一次，如果找不到鄉鎮區域，就使用平均數值
+                city_list2[i] = {'temp':round(statistics.mean(city_list[i]['temp']),1),
                                 'humd':round(statistics.mean(city_list[i]['humd']),1),
                                 'r24':round(statistics.mean(city_list[i]['r24']),1)
                                 }
-        msg = msg_content(area_list2, msg)  # 將訊息改為「大縣市」
-        msg = msg_content(area_list, msg)   # 將訊息改為「鄉鎮區域」
+        for i in area_list:
+            if i not in area_list2: # 將主要縣市裡的數值平均後，以主要縣市名稱為 key，再度儲存一次，如果找不到鄉鎮區域，就使用平均數值
+                area_list2[i] = {'temp':round(statistics.mean(area_list[i]['temp']),1),
+                                'humd':round(statistics.mean(area_list[i]['humd']),1),
+                                'r24':round(statistics.mean(area_list[i]['r24']),1)
+                                }
+        msg = msg_content(city_list2, msg)  # 將訊息改為「大縣市」
+        msg = msg_content(area_list2, msg)   # 將訊息改為「鄉鎮區域」
         return msg    # 回傳 msg
     except:
         return msg    # 如果取資料有發生錯誤，直接回傳 msg
