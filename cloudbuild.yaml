@@ -8,10 +8,10 @@ steps:
       - .
       - '-f'
       - Dockerfile
-      - '--build-arg EPA_TOKEN=$EPA_TOKEN'
-      - '--build-arg CWB_TOKEN=$CWB_TOKEN'
-      - '--build-arg ACCESS_TOKEN=$ACCESS_TOKEN'
-      - '--build-arg SECRET=$SECRET'
+      - '--build-arg EPA_TOKEN=$_EPA_TOKEN'
+      - '--build-arg CWB_TOKEN=$_CWB_TOKEN'
+      - '--build-arg ACCESS_TOKEN=$_ACCESS_TOKEN'
+      - '--build-arg SECRET=$_SECRET'
     id: Build
   - name: gcr.io/cloud-builders/docker
     args:
