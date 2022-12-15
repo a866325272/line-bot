@@ -1,13 +1,18 @@
 from flask import Flask, request
-import requests, json, time, statistics, numpy
+import requests, json, time, statistics, numpy, os
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
+epa_token = os.environ('EPA_TOKEN')
+cwb_token = os.environ('CWB_TOKEN')
+access_token = os.environ('ACCESS_TOKEN')
+secret = os.environ('SECRET')
+
 
 # 空氣品質函式
 def aqi(address):
     city_list, site_list ={}, {}
-    code = 'fe8b19b6-17dd-4f1d-8fbb-3d0d020e8361'
+    code = epa_token
     msg = '找不到空氣品質資訊。'
     try:
         url = f'https://data.epa.gov.tw/api/v2/aqx_p_432?limit=1000&api_key={code}&sort=ImportDate%20desc&format=json'
@@ -57,7 +62,7 @@ def forecast(address):
             "連江縣":"F-D0047-083","金門縣":"F-D0047-087"}
     msg = '找不到天氣預報資訊。'    # 預設回傳訊息
     try:
-        code = 'CWB-5C79FBC7-F8B2-42F1-B127-20D65DBF3EBB'
+        code = cwb_token
         url = f'https://opendata.cwb.gov.tw/fileapi/v1/opendataapi/F-C0032-001?Authorization={code}&downloadType=WEB&format=JSON'
         f_data = requests.get(url)   # 取得主要縣市預報資料
         f_data_json = f_data.json()  # json 格式化訊息內容
@@ -158,7 +163,7 @@ def current_weather(address):
 
     try:
         # 因為目前天氣有兩組網址，兩組都爬取
-        code = 'CWB-5C79FBC7-F8B2-42F1-B127-20D65DBF3EBB'
+        code = cwb_token
         get_data(f'https://opendata.cwb.gov.tw/fileapi/v1/opendataapi/O-A0001-001?Authorization={code}&downloadType=WEB&format=JSON')
         get_data(f'https://opendata.cwb.gov.tw/fileapi/v1/opendataapi/O-A0003-001?Authorization={code}&downloadType=WEB&format=JSON')
         for i in city_list:
@@ -184,7 +189,7 @@ def current_weather(address):
 def earth_quake():
     msg = ['找不到地震資訊','https://example.com/demo.jpg']             # 預設回傳的訊息
     try:
-        code = 'CWB-5C79FBC7-F8B2-42F1-B127-20D65DBF3EBB'
+        code = cwb_token
         url = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={code}'
         url2 = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization={code}'
         e_data = requests.get(url)                                      # 爬取區域地震資訊網址
@@ -265,8 +270,8 @@ def linebot():
     body = request.get_data(as_text=True)                       # 取得收到的訊息內容
     try:
         json_data = json.loads(body)                            # json 格式化訊息內容
-        access_token = '/mlAyjVDbf/FqLFbru0VTm8LFdBomUrgiOdGXSYSlIqGzIljiwMX138dGeihb6Wm0P9zvVsx3b1S+CXu9nvEHePeDz7pwlOTLXLi8YW7dj13tXetEn6guaBK9HUrQ7W9kH6Q//X0V+zQGTQiMLegYQdB04t89/1O/w1cDnyilFU='
-        secret = 'c302c1e4e5a56f7ba87ee8b55691e44a'
+        #access_token = '/mlAyjVDbf/FqLFbru0VTm8LFdBomUrgiOdGXSYSlIqGzIljiwMX138dGeihb6Wm0P9zvVsx3b1S+CXu9nvEHePeDz7pwlOTLXLi8YW7dj13tXetEn6guaBK9HUrQ7W9kH6Q//X0V+zQGTQiMLegYQdB04t89/1O/w1cDnyilFU='
+        #secret = 'c302c1e4e5a56f7ba87ee8b55691e44a'
         #line_bot_api = LineBotApi(access_token)                 # 確認 token 是否正確
         handler = WebhookHandler(secret)                        # 確認 secret 是否正確
         signature = request.headers['X-Line-Signature']         # 加入回傳的 headers
