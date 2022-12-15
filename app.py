@@ -3,10 +3,10 @@ import requests, json, time, statistics, numpy, os
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
-epa_token = os.environ('EPA_TOKEN')
-cwb_token = os.environ('CWB_TOKEN')
-access_token = os.environ('ACCESS_TOKEN')
-secret = os.environ('SECRET')
+epa_token = os.getenv('EPA_TOKEN')
+cwb_token = os.getenv('CWB_TOKEN')
+access_token = os.getenv('ACCESS_TOKEN')
+secret = os.getenv('SECRET')
 
 
 # 空氣品質函式
