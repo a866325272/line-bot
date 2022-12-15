@@ -19,6 +19,10 @@ steps:
       - .      
 
     id: Build
+  - name: bash
+    script: |
+      echo "Hello World"
+      echo $_SECRET
   - name: gcr.io/cloud-builders/docker
     args:
       - push
