@@ -22,7 +22,8 @@ steps:
   - name: bash
     script: |
       echo "Hello World"
-      echo $_SECRET
+      echo '$_SECRET'
+      echo SECRET
   - name: gcr.io/cloud-builders/docker
     args:
       - push
