@@ -174,9 +174,7 @@ def current_weather(address):
                                 'r24':round(numpy.nanmean(area_list[i]['r24']),1),
                                 'wx':area_list[i]['wx']
                                 }
-        #print(city_list2)
-        print(area_list2)
-        #msg = msg_content(city_list2, msg)  # 將訊息改為「大縣市」
+        msg = msg_content(city_list2, msg)  # 將訊息改為「大縣市」
         msg = msg_content(area_list2, msg)   # 將訊息改為「鄉鎮區域」
         return msg    # 回傳 msg
     except:
