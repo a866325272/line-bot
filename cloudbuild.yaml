@@ -5,13 +5,14 @@ steps:
       - '--no-cache'
       - '-t'
       - '$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
-      - .
-      - '-f'
-      - Dockerfile
       - '--build-arg EPA_TOKEN=$_EPA_TOKEN'
       - '--build-arg CWB_TOKEN=$_CWB_TOKEN'
       - '--build-arg ACCESS_TOKEN=$_ACCESS_TOKEN'
       - '--build-arg SECRET=$_SECRET'
+      - .
+      - '-f'
+      - Dockerfile
+
     id: Build
   - name: gcr.io/cloud-builders/docker
     args:
