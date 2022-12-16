@@ -89,10 +89,10 @@ def forecast(address):
             wd = i['weatherElement'][0]['time'][0]['elementValue'][0]['value']  # 綜合描述
             starttime1 = i['weatherElement'][0]['time'][1]['startTime']
             endtime1 = i['weatherElement'][0]['time'][1]['endTime']           
-            wd1 = i['weatherElement'][0]['time'][2]['elementValue'][0]['value']  # 綜合描述
+            wd1 = i['weatherElement'][0]['time'][1]['elementValue'][0]['value']  # 綜合描述
             starttime2 = i['weatherElement'][0]['time'][2]['startTime']
             endtime2 = i['weatherElement'][0]['time'][2]['endTime']           
-            wd2 = i['weatherElement'][0]['time'][3]['elementValue'][0]['value']  # 綜合描述
+            wd2 = i['weatherElement'][0]['time'][2]['elementValue'][0]['value']  # 綜合描述
             starttime3 = i['weatherElement'][0]['time'][3]['startTime']
             endtime3 = i['weatherElement'][0]['time'][3]['endTime']           
             wd3 = i['weatherElement'][0]['time'][3]['elementValue'][0]['value']  # 綜合描述
