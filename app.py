@@ -8,7 +8,6 @@ cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 
-
 # 空氣品質函式
 def aqi(address):
     city_list, site_list ={}, {}
