@@ -76,7 +76,7 @@ def forecast(address):
             if i in address:        # 如果使用者的地址包含縣市名稱
                 msg = area_list[i]  # 將 msg 換成對應的預報資訊
                 # 將進一步的預報網址換成對應的預報網址
-                url = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/{json_api[i]}?Authorization={code}&elementName=WeatherDescription'
+                url = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/{json_api[i]}?Authorization={cwb_token}&elementName=WeatherDescription'
                 f_data = requests.get(url)  # 取得主要縣市裡各個區域鄉鎮的氣象預報
                 f_data_json = f_data.json() # json 格式化訊息內容
                 location = f_data_json['records']['locations'][0]['location']    # 取得預報內容
