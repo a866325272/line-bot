@@ -13,11 +13,9 @@ steps:
       - 'ACCESS_TOKEN=$_ACCESS_TOKEN'
       - '--build-arg'
       - 'SECRET=$_SECRET'
-      #- .
       - '-f'
       - Dockerfile
       - .      
-
     id: Build
   - name: bash
     script: |

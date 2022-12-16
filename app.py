@@ -151,7 +151,7 @@ def current_weather(address):
                 humd = f"相對濕度 {loc[i]['humd']}%，" if loc[i]['humd'] != None else ''
                 r24 = f"累積雨量 {loc[i]['r24']}mm，" if loc[i]['r24'] != None else ''
                 if len(loc[i])==4 and loc[i]['wx'] != []:
-                    wx = f"{loc[i]['wx'][0]}，" #if loc[i]['wx'] != None else ''
+                    wx = f"{loc[i]['wx'][0]}，"
 
                 description = i+f'目前天氣 :\n{wx}{temp}{humd}{r24}'.strip('，')
                 a = f'{description}。' # 取出 key 的內容作為回傳訊息使用
@@ -209,7 +209,7 @@ def earth_quake():
             img2 = i['reportImageURI']                                  # 地震圖
             #msg = [f'{loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。', img]
             break                                                       # 取出第一筆資料後就 break
-        if eq_time > eq_time2:                                          # 判斷最近一筆時間
+        if eq_time > eq_time2:                                          # 判斷最近一筆時間資料回傳
             msg = [f'{loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。', img]
         else:
             msg = [f'{loc2}，芮氏規模 {val2} 級，深度 {dep2} 公里，發生時間 {eq_time2}。', img2]
@@ -290,11 +290,6 @@ def linebot():
                 reply = msg
                 print(reply)
                 line_bot_api.reply_message(tk,TextSendMessage(reply))# 回傳訊息"""
-        """else:
-            pass
-            reply = '你傳的不是文字呦～'
-            print(reply)
-            line_bot_api.reply_message(tk,TextSendMessage(reply))# 回傳訊息"""
     except:
         print('error')                                          # 如果發生錯誤，印出error                                   
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
