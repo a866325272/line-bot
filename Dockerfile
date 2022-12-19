@@ -1,6 +1,9 @@
 FROM python:3.9.16-slim
 WORKDIR /app
 COPY requirements.txt requirements.txt
+ADD app.py /app/
+ADD prompt.py /app/
+ADD chatgpt.py /app/
 
 ARG EPA_TOKEN
 ARG CWB_TOKEN
@@ -15,7 +18,4 @@ ENV SECRET ${SECRET}
 ENV OPENAI_TOKEN ${OPENAI_TOKEN}
 
 RUN pip3 install -r requirements.txt
-COPY ./app.py ./app.py
-COPY ./prompt.py ./prompt.py
-COPY ./chatgpt.py ./chatgpt.py
 CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
