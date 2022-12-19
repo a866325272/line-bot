@@ -7,6 +7,20 @@ epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
+openai_token = os.getenv('OPENAI_TOKEN')
+
+# OpenAI製圖函式
+def dalle(msg):
+    headers = {'Authorization':f'Bearer {openai_token}','Content-Type':'application/json'}
+    body = {
+    "prompt": msg,
+    "n": 1,
+    "size": "256x256"
+    }
+    req = requests.request('POST', 'https://api.openai.com/v1/images/generations', headers=headers,data=json.dumps(body).encode('utf-8'))
+    req_data_json = req.json()
+    print(req_data_json['data'][0]['url'])
+    return req_data_json['data'][0]['url']
 
 # 空氣品質函式
 def aqi(address):
@@ -284,6 +298,9 @@ def linebot():
                 quake = earth_quake()                           # 爬取地震資訊
                 push_message(quake[0], group_id, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
                 reply_image(quake[1], tk, access_token)         # 傳送地震圖片 ( 用 reply 方法 )
+            elif text[0:2] == '畫，' or text[0:2] == '畫,':
+                openai_image_url = dalle(text[2:])
+                reply_image(openai_image_url, tk, access_token)
             else:
                 pass
                 """print(msg)                                       # 印出內容

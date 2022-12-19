@@ -13,6 +13,8 @@ steps:
       - 'ACCESS_TOKEN=$_ACCESS_TOKEN'
       - '--build-arg'
       - 'SECRET=$_SECRET'
+      - '--build-arg'
+      - 'OPENAI_TOKEN=$_OPENAI_TOKEN'
       - '-f'
       - Dockerfile
       - .      
