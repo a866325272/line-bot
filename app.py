@@ -1,13 +1,15 @@
 from flask import Flask, request
-import requests, json, time, statistics, numpy, os
+import requests, json, time, statistics, numpy, os, openai
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
+from chatgpt import ChatGPT
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
+openai.api_key = openai_token
 
 # OpenAI製圖函式
 def dalle(msg):
@@ -19,7 +21,6 @@ def dalle(msg):
     }
     req = requests.request('POST', 'https://api.openai.com/v1/images/generations', headers=headers,data=json.dumps(body).encode('utf-8'))
     req_data_json = req.json()
-    print(req_data_json['data'][0]['url'])
     return req_data_json['data'][0]['url']
 
 # 空氣品質函式
@@ -301,6 +302,11 @@ def linebot():
             elif text[0:2] == '畫，' or text[0:2] == '畫,':
                 openai_image_url = dalle(text[2:])
                 reply_image(openai_image_url, tk, access_token)
+            elif text[0:2] == '聊，' or text[0:2] == '聊,':
+                chatgpt = ChatGPT()
+                chatgpt.add_msg(f"Human:{text[2:]}?\n")
+                reply_msg = chatgpt.get_response().replace("AI:", "", 1)
+                reply_message(reply_msg , tk, access_token)
             else:
                 pass
                 """print(msg)                                       # 印出內容
