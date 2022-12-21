@@ -19,11 +19,6 @@ steps:
       - Dockerfile
       - .      
     id: Build
-  - name: bash
-    script: |
-      echo "Hello World"
-      echo "$_SECRET"
-      echo SECRET
   - name: gcr.io/cloud-builders/docker
     args:
       - push

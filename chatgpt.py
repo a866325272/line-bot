@@ -1,6 +1,5 @@
 from prompt import Prompt
-import os
-import openai
+import os, openai
 class ChatGPT:
     def __init__(self):
         self.prompt = Prompt()
