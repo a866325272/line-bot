@@ -304,7 +304,7 @@ def linebot():
                 reply_image(openai_image_url, tk, access_token)
             elif text[0:2] == '聊，' or text[0:2] == '聊,':
                 chatgpt = ChatGPT()
-                chatgpt.add_msg(f"Human:{text[2:]}?\n")
+                chatgpt.add_msg(f"Human:{text[2:]}\n")
                 reply_msg = chatgpt.get_response().replace("AI:", "", 1)
                 reply_message(reply_msg , tk, access_token)
             else:
