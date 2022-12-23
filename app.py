@@ -21,11 +21,12 @@ def get_meme():
     m_data_json = m_data.json()
     url = []
     for i in m_data_json:
-        url.append(i['url'])
-    print(choice(url))
-    i_data = requests.get(choice(url), headers=headers)
-    soup = BeautifulSoup(i_data.text, "html.parser")
-    img = soup.find("div", class_="text-center mb-2").select_one("img").get("src")
+        url.append(i['src'])
+    img = choice(url)
+    print(img)
+    #i_data = requests.get(choice(url), headers=headers)
+    #soup = BeautifulSoup(i_data.text, "html.parser")
+    #img = soup.find("div", class_="text-center mb-2").select_one("img").get("src")
     return img
 
 # OpenAI製圖函式
