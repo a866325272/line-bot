@@ -3,3 +3,5 @@ line-bot-sdk==2.3.0
 numpy==1.23.5
 requests==2.28.1
 openai==0.25.0
+soupsieve==2.3.2.post1
+beautifulsoup4==4.11.1

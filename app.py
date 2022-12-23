@@ -4,12 +4,29 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
 from chatgpt import ChatGPT
+from random import choice
+from bs4 import BeautifulSoup
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
 openai.api_key = openai_token
+
+# 取得迷因圖函式
+
+def get_meme():
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'}
+    m_data = requests.get('https://memes.tw/wtf/api', headers=headers)
+    m_data_json = m_data.json()
+    url = []
+    for i in m_data_json:
+        url.append(i['url'])
+    print(choice(url))
+    i_data = requests.get(choice(url), headers=headers)
+    soup = BeautifulSoup(i_data.text, "html.parser")
+    img = soup.find("div", class_="text-center mb-2").select_one("img").get("src")
+    return img
 
 # OpenAI製圖函式
 def dalle(msg):
@@ -307,8 +324,10 @@ def linebot():
                 chatgpt.add_msg(f"Human:{text[2:]}\n")
                 reply_msg = chatgpt.get_response().replace("AI:", "", 1)
                 reply_message(reply_msg , tk, access_token)
+            elif text == '扛' or text == '坦':
+                reply_image(get_meme(), tk, access_token)
             elif text == '!help' or text == '！help':
-                reply_msg = f'指令說明\n聊， - 機器人陪你聊天\n畫， - 機器人合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報'
+                reply_msg = f'指令說明\n扛 或 坦- 打了你就知道啦~~\n聊， - 機器人陪你聊天\n畫， - 機器人合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報'
                 reply_message(reply_msg , tk, access_token)
             else:
                 pass
