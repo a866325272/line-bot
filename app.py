@@ -17,8 +17,8 @@ openai.api_key = openai_token
 # 取得表特圖函式
 def get_beauty():
     imgs = []
-    n = str(random.randrange(1,901))
-    for i in range(int(n),int(n)+2,1):
+    n = random.randrange(1,901)
+    for i in range(n,n+2,1):
         url = 'https://beautyptt.cc/extend?page=' + str(i)
         web = requests.get(url)
         soup = BeautifulSoup(web.text, "html.parser")
@@ -34,18 +34,27 @@ def get_beauty():
 
 # 取得迷因圖函式
 def get_meme():
+    imgs = []
+    n = random.randrange(1,76)
+    url = 'https://memes.tw/wtf/user/125281?page=' + str(n)
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'}
+    web = requests.get(url, headers=headers)
+    soup = BeautifulSoup(web.text, "html.parser")
+    links = soup.find_all("img", class_="img-fluid lazy")
+    for link in links:
+        if 'data-src' in link.attrs:
+            imgs.append(link['data-src'])
+            print(link['data-src'])
+    img = choice(imgs)
+    return img
+    """headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'}
     m_data = requests.get('https://memes.tw/wtf/api', headers=headers)
     m_data_json = m_data.json()
     url = []
     for i in m_data_json:
         url.append(i['src'])
     img = choice(url)
-    print(img)
-    #i_data = requests.get(choice(url), headers=headers)
-    #soup = BeautifulSoup(i_data.text, "html.parser")
-    #img = soup.find("div", class_="text-center mb-2").select_one("img").get("src")
-    return img
+    return img"""
 
 # OpenAI製圖函式
 def dalle(msg):
