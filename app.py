@@ -6,6 +6,7 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSend
 from chatgpt import ChatGPT
 from random import choice
 from bs4 import BeautifulSoup
+import random
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
@@ -13,8 +14,25 @@ secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
 openai.api_key = openai_token
 
-# 取得迷因圖函式
+# 取得表特圖函式
+def get_beauty():
+    imgs = []
+    n = str(random.randrange(1,901))
+    for i in range(int(n),int(n)+2,1):
+        url = 'https://beautyptt.cc/extend?page=' + str(i)
+        web = requests.get(url)
+        soup = BeautifulSoup(web.text, "html.parser")
+        links = soup.find_all("a")
+        for link in links:
+            if 'href' in link.attrs and 'imgur.com/' in link['href']:
+                a = link['href']
+                l = a.find('imgur.com/')
+                a = a[l-2:l+18]
+                imgs.append('https://'+a+'.jpg')
+    img = choice(imgs)
+    return(img)
 
+# 取得迷因圖函式
 def get_meme():
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'}
     m_data = requests.get('https://memes.tw/wtf/api', headers=headers)
@@ -327,8 +345,10 @@ def linebot():
                 reply_message(reply_msg , tk, access_token)
             elif text == '扛' or text == '坦':
                 reply_image(get_meme(), tk, access_token)
+            elif text == '抽':
+                reply_image(get_beauty(), tk, access_token)
             elif text == '!help' or text == '！help':
-                reply_msg = f'指令說明\n扛 或 坦- 打了你就知道啦~~\n聊， - 機器人陪你聊天\n畫， - 機器人合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報'
+                reply_msg = f'指令說明\n扛 或 坦- 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - 機器人陪你聊天\n畫， - 機器人合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報'
                 reply_message(reply_msg , tk, access_token)
             else:
                 pass
