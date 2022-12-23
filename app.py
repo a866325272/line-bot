@@ -307,6 +307,9 @@ def linebot():
                 chatgpt.add_msg(f"Human:{text[2:]}\n")
                 reply_msg = chatgpt.get_response().replace("AI:", "", 1)
                 reply_message(reply_msg , tk, access_token)
+            elif text == '!help' or text == '！help':
+                reply_msg = f'指令說明\n聊， - 機器人陪你聊天\n畫， - 機器人合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報'
+                reply_message(reply_msg , tk, access_token)
             else:
                 pass
                 """print(msg)                                       # 印出內容

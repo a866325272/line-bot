@@ -3,7 +3,7 @@ chat_language = os.getenv("INIT_LANGUAGE", default = "zh")
 MSG_LIST_LIMIT = int(os.getenv("MSG_LIST_LIMIT", default = 20))
 LANGUAGE_TABLE = {
 "zh": "繁體中文！",
-"en": "Traditional Chinese!"
+"en": "English!"
 }
 class Prompt:
     def __init__(self):
