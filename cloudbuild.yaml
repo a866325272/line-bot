@@ -4,7 +4,7 @@ steps:
       - build
       - '--no-cache'
       - '-t'
-      - '$_LOCATION/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
+      - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA'
       - '--build-arg'
       - 'EPA_TOKEN=$_EPA_TOKEN'
       - '--build-arg'
