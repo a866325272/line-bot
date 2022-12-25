@@ -44,7 +44,6 @@ def get_meme():
     for link in links:
         if 'data-src' in link.attrs:
             imgs.append(link['data-src'])
-            print(link['data-src'])
     img = choice(imgs)
     return img
     """headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'}
