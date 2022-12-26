@@ -14,6 +14,26 @@ secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
 openai.api_key = openai_token
 
+# 取得今日星座運勢
+def get_luck(sign):
+    json_zodiac = {"牡羊": "0", "金牛": "1", "雙子": "2", "巨蟹": "3", "獅子": "4", "處女": "5", "天秤": "6", "天蠍": "7", "射手": "8", "魔羯": "9", "水瓶": "10", "雙魚": "11"}
+    url = "https://astro.click108.com.tw/daily.php?iAstro=" + json_zodiac[sign]
+    web = requests.get(url)
+    soup = BeautifulSoup(web.text, "html.parser")
+    luck = soup.find_all("div", class_="TODAY_CONTENT")
+    r = str(luck).replace('[<div class="TODAY_CONTENT">', "")
+    r = r.replace("<h3>", "")
+    r = r.replace("</h3>", "")
+    r = r.replace('<p><span class="txt_green">', "")
+    r = r.replace('<p><span class="txt_pink">', "")
+    r = r.replace('<p><span class="txt_blue">', "")
+    r = r.replace('<p><span class="txt_orange">', "")
+    r = r.replace('</span></p><p>', "")
+    r = r.replace('</p>', "")
+    r = r.replace('</div>]', "")
+    r = r.replace(f"\n今","今")
+    return r
+
 # 取得表特圖函式
 def get_beauty():
     imgs = []
@@ -288,7 +308,7 @@ def reply_image(msg, rk, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    print("reply_img:"+req.text)
+    print("reply_img:"+msg)
 
 # LINE 回傳訊息函式
 def reply_message(msg, rk, token):
@@ -301,7 +321,7 @@ def reply_message(msg, rk, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    print(req.text)
+    print("reply_message:"+msg)
 
 # LINE push 訊息函式
 def push_message(msg, uid, token):
@@ -314,7 +334,7 @@ def push_message(msg, uid, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/push', headers=headers,data=json.dumps(body).encode('utf-8'))
-    print("push_msg:"+req.text)
+    print("push_msg:"+msg)
 
 app = Flask(__name__)
 
@@ -356,8 +376,10 @@ def linebot():
             elif text == '抽':
                 reply_image(get_beauty(), tk, access_token)
             elif text == '!help' or text == '！help':
-                reply_msg = f'指令說明\n扛 或 坦- 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - 機器人陪你聊天\n畫， - 機器人合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報'
+                reply_msg = f'指令說明\n扛 或 坦- 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - 機器人陪你聊天\n畫， - 機器人合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢'
                 reply_message(reply_msg , tk, access_token)
+                elif text == '牡羊' or '金牛' or '雙子' or '巨蟹' or '獅子' or '處女' or '天秤' or '天蠍' or '射手' or '魔羯' or '水瓶' or '雙魚':
+                reply_message(get_luck(text), tk, access_token)
             else:
                 pass
                 """print(msg)                                       # 印出內容
