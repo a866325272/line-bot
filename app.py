@@ -378,7 +378,7 @@ def linebot():
             elif text == '!help' or text == '！help':
                 reply_msg = f'指令說明\n扛 或 坦- 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - 機器人陪你聊天\n畫， - 機器人合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢'
                 reply_message(reply_msg , tk, access_token)
-                elif text == '牡羊' or '金牛' or '雙子' or '巨蟹' or '獅子' or '處女' or '天秤' or '天蠍' or '射手' or '魔羯' or '水瓶' or '雙魚':
+            elif text == '牡羊' or '金牛' or '雙子' or '巨蟹' or '獅子' or '處女' or '天秤' or '天蠍' or '射手' or '魔羯' or '水瓶' or '雙魚':
                 reply_message(get_luck(text), tk, access_token)
             else:
                 pass
