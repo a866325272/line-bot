@@ -270,22 +270,22 @@ def earth_quake():
         e_data_json = e_data.json()                                     # json 格式化訊息內容
         e_data2 = requests.get(url2)                                    # 爬取有感地震資訊網址
         e_data_json2 = e_data2.json()                                   # json 格式化訊息內容
-        eq = e_data_json['records']['earthquake']                       # 取出區域地震資訊
-        eq2 = e_data_json2['records']['earthquake']                     # 取出有感地震資訊
+        eq = e_data_json['records']['Earthquake']                       # 取出區域地震資訊
+        eq2 = e_data_json2['records']['Earthquake']                     # 取出有感地震資訊
         for i in eq:
-            loc = i['earthquakeInfo']['epiCenter']['location']          # 地震地點
-            val = i['earthquakeInfo']['magnitude']['magnitudeValue']    # 地震規模
-            dep = i['earthquakeInfo']['depth']['value']                 # 地震深度
-            eq_time = i['earthquakeInfo']['originTime']                 # 地震時間
-            img = i['reportImageURI']                                   # 地震圖
+            loc = i['EarthquakeInfo']['Epicenter']['Location']          # 地震地點
+            val = i['EarthquakeInfo']['EarthquakeMagnitude']['MagnitudeValue']    # 地震規模
+            dep = i['EarthquakeInfo']['FocalDepth']                     # 地震深度
+            eq_time = i['EarthquakeInfo']['OriginTime']                                   # 地震時間
+            img = i['ReportImageURI']                                   # 地震圖
             #msg = [f'{loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。', img]
             break                                                       # 取出第一筆資料後就 break
         for i in eq2:
-            loc2 = i['earthquakeInfo']['epiCenter']['location']         # 地震地點
-            val2 = i['earthquakeInfo']['magnitude']['magnitudeValue']   # 地震規模
-            dep2 = i['earthquakeInfo']['depth']['value']                # 地震深度
-            eq_time2 = i['earthquakeInfo']['originTime']                # 地震時間
-            img2 = i['reportImageURI']                                  # 地震圖
+            loc2 = i['EarthquakeInfo']['Epicenter']['Location']         # 地震地點
+            val2 = i['EarthquakeInfo']['EarthquakeMagnitude']['MagnitudeValue']   # 地震規模
+            dep2 = i['EarthquakeInfo']['FocalDepth']                    # 地震深度
+            eq_time2 = i['EarthquakeInfo']['OriginTime']                                  # 地震時間
+            img2 = i['ReportImageURI']                                  # 地震圖
             #msg = [f'{loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。', img]
             break                                                       # 取出第一筆資料後就 break
         if eq_time > eq_time2:                                          # 判斷最近一筆時間資料回傳
