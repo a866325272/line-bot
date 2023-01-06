@@ -163,20 +163,36 @@ def forecast(address):
                 break
         for i in location:
             area = i['locationName']   # 取得鄉鎮區域名稱
-            starttime = i['weatherElement'][0]['time'][0]['startTime']
+            #starttime = i['weatherElement'][0]['time'][0]['startTime']
             endtime = i['weatherElement'][0]['time'][0]['endTime']
+            if endtime[11] == '0' and endtime[12] == '6':
+                endtime = endtime[:11] + "0時"
+            if endtime[11] == '1' and endtime[12] == '8':
+                endtime = endtime[:11] + "12時"
             wd = i['weatherElement'][0]['time'][0]['elementValue'][0]['value']  # 綜合描述
-            starttime1 = i['weatherElement'][0]['time'][1]['startTime']
-            endtime1 = i['weatherElement'][0]['time'][1]['endTime']           
+            #starttime1 = i['weatherElement'][0]['time'][1]['startTime']
+            endtime1 = i['weatherElement'][0]['time'][1]['endTime']
+            if endtime1[11] == '0' and endtime1[12] == '6':
+                endtime1 = endtime1[:11] + "0時"
+            if endtime1[11] == '1' and endtime1[12] == '8':
+                endtime1 = endtime1[:11] + "12時"
             wd1 = i['weatherElement'][0]['time'][1]['elementValue'][0]['value']  # 綜合描述
-            starttime2 = i['weatherElement'][0]['time'][2]['startTime']
-            endtime2 = i['weatherElement'][0]['time'][2]['endTime']           
+            #starttime2 = i['weatherElement'][0]['time'][2]['startTime']
+            endtime2 = i['weatherElement'][0]['time'][2]['endTime']
+            if endtime2[11] == '0' and endtime2[12] == '6':
+                endtime2 = endtime2[:11] + "0時"
+            if endtime2[11] == '1' and endtime2[12] == '8':
+                endtime2 = endtime2[:11] + "12時"
             wd2 = i['weatherElement'][0]['time'][2]['elementValue'][0]['value']  # 綜合描述
-            starttime3 = i['weatherElement'][0]['time'][3]['startTime']
-            endtime3 = i['weatherElement'][0]['time'][3]['endTime']           
+            #starttime3 = i['weatherElement'][0]['time'][3]['startTime']
+            endtime3 = i['weatherElement'][0]['time'][3]['endTime']
+            if endtime3[11] == '0' and endtime3[12] == '6':
+                endtime3 = endtime3[:11] + "0時"
+            if endtime3[11] == '1' and endtime3[12] == '8':
+                endtime3 = endtime3[:11] + "12時"
             wd3 = i['weatherElement'][0]['time'][3]['elementValue'][0]['value']  # 綜合描述
             if area in address:           # 如果使用者的地址包含鄉鎮區域名稱
-                msg = city+area+f'天氣預報 :\n{starttime}~\n{endtime}\n{wd}\n\n{starttime1}~\n{endtime1}\n{wd1}\n\n{starttime2}~\n{endtime2}\n{wd2}\n\n{starttime3}~\n{endtime3}\n{wd3}' # 將 msg 換成對應的預報資訊
+                msg = city+area+f'天氣預報 :\n{endtime}\n{wd}\n\n{endtime1}\n{wd1}\n\n{endtime2}\n{wd2}\n\n{endtime3}\n{wd3}' # 將 msg 換成對應的預報資訊
                 break
         return msg  # 回傳 msg
     except:
