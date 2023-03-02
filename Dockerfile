@@ -16,6 +16,4 @@ ENV OPENAI_TOKEN ${OPENAI_TOKEN}
 
 RUN pip3 install -r requirements.txt
 COPY app.py app.py
-COPY prompt.py prompt.py
-COPY chatgpt.py chatgpt.py
 CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
