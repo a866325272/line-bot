@@ -32,6 +32,7 @@ def get_luck(sign):
     r = r.replace('</p>', "")
     r = r.replace('</div>]', "")
     r = r.replace(f"\n今","今")
+    r = r[0:len(r)-1]
     return r
 
 # 取得表特圖函式
@@ -364,9 +365,12 @@ def linebot():
         handler = WebhookHandler(secret)                        # 確認 secret 是否正確
         signature = request.headers['X-Line-Signature']         # 加入回傳的 headers
         handler.handle(body, signature)                         # 綁定訊息回傳的相關資訊
-        tk = json_data['events'][0]['replyToken']               # 取得回傳訊息的 Token
-        #user_id = json_data['events'][0]['source']['userId']    # 取得發出請求的UserID
-        group_id = json_data['events'][0]['source']['groupId']  # 取得發出請求的GroupID
+        tk = json_data['events'][0]['replyToken']               # 取得回傳訊息的 Token       
+        user_id = json_data['events'][0]['source']['userId']    # 取得發出請求的UserID
+        try:
+            group_id = json_data['events'][0]['source']['groupId']  # 取得發出請求的GroupID
+        except:
+            pass
         type = json_data['events'][0]['message']['type']        # 取得 LINe 收到的訊息類型
         if type=='location':
             address = json_data['events'][0]['message']['address'].replace('台','臺')   # 取出地址資訊，並將「台」換成「臺」
@@ -377,7 +381,10 @@ def linebot():
                 reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
             elif text == '地震資訊' or text == '地震':
                 quake = earth_quake()                           # 爬取地震資訊
-                push_message(quake[0], group_id, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
+                try:
+                    push_message(quake[0], group_id, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
+                except:
+                    push_message(quake[0], user_id, access_token)
                 reply_image(quake[1], tk, access_token)         # 傳送地震圖片 ( 用 reply 方法 )
             elif text[0:2] == '畫，' or text[0:2] == '畫,':
                 openai_image_url = dalle(text[2:])
@@ -394,7 +401,7 @@ def linebot():
             elif text == '抽':
                 reply_image(get_beauty(), tk, access_token)
             elif text == '!help' or text == '！help':
-                reply_msg = f'指令說明\n扛 或 坦- 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - 機器人陪你聊天\n畫， - 機器人合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢'
+                reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - OpenAI合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音辨識轉文字'
                 reply_message(reply_msg , tk, access_token)
             elif text == '牡羊' or '金牛' or '雙子' or '巨蟹' or '獅子' or '處女' or '天秤' or '天蠍' or '射手' or '魔羯' or '水瓶' or '雙魚':
                 reply_message(get_luck(text), tk, access_token)
@@ -404,6 +411,15 @@ def linebot():
                 reply = msg
                 print(reply)
                 line_bot_api.reply_message(tk,TextSendMessage(reply))# 回傳訊息"""
+        if type=='audio':
+            message_id = json_data['events'][0]['message']['id']
+            headers = {'Authorization':f'Bearer {access_token}'}
+            req = requests.request('GET', f'https://api-data.line.me/v2/bot/message/{message_id}/content', headers=headers)
+            open("temp.wav","wb").write(req.content)
+            f = open("temp.wav", "rb")
+            transcript = openai.Audio.transcribe("whisper-1", f)
+            tr_json = json.loads(str(transcript))
+            reply_message(tr_json['text'], tk, access_token)
     except:
         print('error')                                          # 如果發生錯誤，印出error                                   
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
