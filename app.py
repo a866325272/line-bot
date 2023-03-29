@@ -392,10 +392,10 @@ def linebot():
             elif text[0:2] == '聊，' or text[0:2] == '聊,':
                 #chatgpt = ChatGPT()
                 #chatgpt.add_msg(f"Human:{text[2:]}\n")
-                completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": text[2:]+"(請使用中文回覆)"}])
+                completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文回覆)"}])
                 #reply_msg = chatgpt.get_response().replace("AI:", "", 1)
                 reply_msg = completion.choices[0].message.content
-                reply_message(reply_msg[2:] , tk, access_token)
+                reply_message(reply_msg, tk, access_token)
             elif text == '扛' or text == '坦':
                 reply_image(get_meme(), tk, access_token)
             elif text == '抽':
