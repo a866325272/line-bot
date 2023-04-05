@@ -413,11 +413,7 @@ def linebot():
             elif text == '牡羊' or '金牛' or '雙子' or '巨蟹' or '獅子' or '處女' or '天秤' or '天蠍' or '射手' or '魔羯' or '水瓶' or '雙魚':
                 reply_message(get_luck(text), tk, access_token)
             else:
-                pass
-                """print(msg)                                       # 印出內容
-                reply = msg
-                print(reply)
-                line_bot_api.reply_message(tk,TextSendMessage(reply))# 回傳訊息"""
+                print(text)
         if type=='audio':
             message_id = json_data['events'][0]['message']['id']
             headers = {'Authorization':f'Bearer {access_token}'}
@@ -427,9 +423,15 @@ def linebot():
             transcript = openai.Audio.transcribe("whisper-1", f)
             tr_json = json.loads(str(transcript))
             reply_message(tr_json['text'], tk, access_token)
+        if type=='sticker':
+            print('sticker')
+            logging.info('sticker')
+        if type=='video':
+            print('video')
+            logging.info('video')
     except:
         print('error')                                          # 如果發生錯誤，印出error
-        logging.info('error')
+        logging.warning('error')
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
 
 if __name__ == "__main__":
