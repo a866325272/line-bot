@@ -7,12 +7,16 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSend
 from random import choice
 from bs4 import BeautifulSoup
 import random
+import google.cloud.logging
+import logging
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
 openai.api_key = openai_token
+logging_client = google.cloud.logging.Client()
+logging_client.setup_logging()
 
 # 取得今日星座運勢
 def get_luck(sign):
@@ -96,7 +100,6 @@ def aqi(address):
         url = f'https://data.epa.gov.tw/api/v2/aqx_p_432?limit=1000&api_key={epa_token}&sort=ImportDate%20desc&format=json'
         a_data = requests.get(url)             # 使用 get 方法透過空氣品質指標 API 取得內容
         a_data_json = a_data.json()            # json 格式化訊息內容
-        #print(a_data_json)
         for i in a_data_json['records']:       # 依序取出 records 內容的每個項目
             city = i['county']                 # 取出縣市名稱
             if city not in city_list:
@@ -326,6 +329,7 @@ def reply_image(msg, rk, token):
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
     print("reply_img:"+msg)
+    logging.info("reply_img:"+msg)
 
 # LINE 回傳訊息函式
 def reply_message(msg, rk, token):
@@ -339,6 +343,7 @@ def reply_message(msg, rk, token):
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
     print("reply_message:"+msg)
+    logging.info("reply_message:"+msg)
 
 # LINE push 訊息函式
 def push_message(msg, uid, token):
@@ -352,6 +357,7 @@ def push_message(msg, uid, token):
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/push', headers=headers,data=json.dumps(body).encode('utf-8'))
     print("push_msg:"+msg)
+    logging.info("push_msg:"+msg)
 
 app = Flask(__name__)
 
@@ -378,6 +384,7 @@ def linebot():
         if type=='text':
             text = json_data['events'][0]['message']['text']     # 取得 LINE 收到的文字訊息
             if text == '雷達回波圖' or text == '雷達回波':
+                print(1)
                 reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
             elif text == '地震資訊' or text == '地震':
                 quake = earth_quake()                           # 爬取地震資訊
@@ -421,7 +428,8 @@ def linebot():
             tr_json = json.loads(str(transcript))
             reply_message(tr_json['text'], tk, access_token)
     except:
-        print('error')                                          # 如果發生錯誤，印出error                                   
+        print('error')                                          # 如果發生錯誤，印出error
+        logging.info('error')
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
 
 if __name__ == "__main__":
