@@ -384,7 +384,6 @@ def linebot():
         if type=='text':
             text = json_data['events'][0]['message']['text']     # 取得 LINE 收到的文字訊息
             if text == '雷達回波圖' or text == '雷達回波':
-                print(1)
                 reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
             elif text == '地震資訊' or text == '地震':
                 quake = earth_quake()                           # 爬取地震資訊
@@ -414,6 +413,7 @@ def linebot():
                 reply_message(get_luck(text), tk, access_token)
             else:
                 print(text)
+                logging.info(text)
         if type=='audio':
             message_id = json_data['events'][0]['message']['id']
             headers = {'Authorization':f'Bearer {access_token}'}
