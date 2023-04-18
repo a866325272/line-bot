@@ -325,7 +325,7 @@ def reply_image(msg, rk, token):
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
     print("reply_img:"+msg)
-    #logging.info("reply_img:"+msg)
+    logging.info("reply_img:"+msg)
 
 # LINE 回傳訊息函式
 def reply_message(msg, rk, token):
