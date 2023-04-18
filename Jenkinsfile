@@ -40,7 +40,15 @@ pipeline {
                 sh '''docker images | grep gitlab.jeffdomain.com:1005/jeff/line-bot | awk '{print $3}' | xargs docker rmi'''
                 sh "ssh -i /var/jenkins_home/.ssh/id_rsa root@192.168.8.110 sed -i 's+gitlab.jeffdomain.com:1005/jeff/line-bot.*+gitlab.jeffdomain.com:1005/jeff/line-bot:1.0.${BUILD_NUMBER}+g' /volume1/docker/docker-compose-line-bot.yml"
                 sh "ssh -i /var/jenkins_home/.ssh/id_rsa root@192.168.8.110 /usr/local/bin/docker-compose -f /volume1/docker/docker-compose-line-bot.yml up -d"
-                sh "curl -s 192.168.8.110:4040/api/tunnels"
+            }
+        }
+        stage("Get Service URL") {
+            steps {
+                script {
+                    final String url = "192.168.8.110:4040/api/tunnels"
+                    final String response = sh(script: "curl -s $url", returnStdout: true).trim()
+                    echo response
+                }
             }
         }
     }
