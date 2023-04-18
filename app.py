@@ -7,7 +7,6 @@ from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSend
 from random import choice
 from bs4 import BeautifulSoup
 import random
-import google.cloud.logging
 import logging
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
@@ -15,9 +14,6 @@ access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
 openai.api_key = openai_token
-logging_client = google.cloud.logging.Client()
-logging_client.setup_logging()
-
 # 取得今日星座運勢
 def get_luck(sign):
     json_zodiac = {"牡羊": "0", "金牛": "1", "雙子": "2", "巨蟹": "3", "獅子": "4", "處女": "5", "天秤": "6", "天蠍": "7", "射手": "8", "魔羯": "9", "水瓶": "10", "雙魚": "11"}
