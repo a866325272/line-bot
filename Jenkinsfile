@@ -34,6 +34,9 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh "echo 'start deploying...'"
+                withCredentials([usernamePassword(credentialsId: 'gitlab-jeff', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+                    sh "ssh -i ${SSH_KEY} jeff@${DEPLOY_DEST} /usr/local/bin/docker login -u ${USERNAME} -p ${PASSWORD} ${REPO_URL}"
+                }
                 sh "ssh -i ${SSH_KEY} jeff@${DEPLOY_DEST} /usr/local/bin/docker-compose -f ${DOCKER_COMPOSE_FILE} down"
                 sh '''docker images | grep ${REPO_URL}/jeff/line-bot | awk '{print $3}' | xargs docker rmi'''
                 sh "ssh -i ${SSH_KEY} jeff@${DEPLOY_DEST} sed -i 's+${REPO_URL}/jeff/line-bot.*+${REPO_URL}/jeff/line-bot:1.0.${BUILD_NUMBER}+g' ${DOCKER_COMPOSE_FILE}"
