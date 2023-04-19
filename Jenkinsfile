@@ -1,6 +1,12 @@
 pipeline {
     agent any
     stages {
+        stage('Post Build') {
+            steps {
+                sh "echo 'start docker login...'"
+                sh '''echo ${REPO_PASSWORD} | docker login --username ${REPO_USERNAME} --password-stdin ${REPO_URL}'''
+            }
+        }
         stage('Build') {
             steps {
                 sh "echo 'start building...'"
@@ -17,7 +23,6 @@ pipeline {
         stage('Push') {
             steps {
                 sh "echo 'start pushing...'"
-                sh '''echo ${REPO_PASSWORD} | docker login --username ${REPO_USERNAME} --password-stdin'''
                 sh '''docker push ${REPO_URL}/jeff/line-bot:latest'''
                 sh '''docker tag ${REPO_URL}/jeff/line-bot:latest ${REPO_URL}/jeff/line-bot:1.0.${BUILD_NUMBER}'''
                 sh '''docker push ${REPO_URL}/jeff/line-bot:1.0.${BUILD_NUMBER}'''
