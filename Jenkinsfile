@@ -17,7 +17,7 @@ pipeline {
         stage('Push') {
             steps {
                 sh "echo 'start pushing...'"
-                sh '''docker login -u ${REPO_USERNAME} -p ${REPO_PASSWORD} ${REPO_URL}'''
+                sh '''echo ${REPO_PASSWORD} | docker login --username ${REPO_USERNAME} --password-stdin'''
                 sh '''docker push ${REPO_URL}/jeff/line-bot:latest'''
                 sh '''docker tag ${REPO_URL}/jeff/line-bot:latest ${REPO_URL}/jeff/line-bot:1.0.${BUILD_NUMBER}'''
                 sh '''docker push ${REPO_URL}/jeff/line-bot:1.0.${BUILD_NUMBER}'''
