@@ -4,7 +4,7 @@ pipeline {
         stage('Post Build') {
             steps {
                 sh "echo 'start docker login...'"
-                withCredentials(usernamePassword(credentialsId: 'gitlab-jeff', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')) {
+                withCredentials([usernamePassword(credentialsId: 'gitlab-jeff', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
                     sh "docker login -u ${USERNAME} -p ${PASSWORD} ${REPO_URL}"
                 }
             }
