@@ -8,12 +8,23 @@ from random import choice
 from bs4 import BeautifulSoup
 import random
 import logging
+from logging.handlers import TimedRotatingFileHandler
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
 openai.api_key = openai_token
+
+# log config
+logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_path = '/var/log/line-bot/'
+logger = logging.getLogger('')
+console_handler = logging.StreamHandler()
+rotate_handler = logging.handlers.TimedRotatingFileHandler(log_path+'line-bot.log',when="h",interval=1,backupCount=720)
+logger.addHandler(rotate_handler)
+logger.addHandler(console_handler)
+
 # 取得今日星座運勢
 def get_luck(sign):
     json_zodiac = {"牡羊": "0", "金牛": "1", "雙子": "2", "巨蟹": "3", "獅子": "4", "處女": "5", "天秤": "6", "天蠍": "7", "射手": "8", "魔羯": "9", "水瓶": "10", "雙魚": "11"}
@@ -324,8 +335,9 @@ def reply_image(msg, rk, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    print("reply_img:"+msg)
-    logging.info("reply_img:"+msg)
+    #print("reply_img:"+msg)
+    #logging.info("reply_img:"+msg)
+    logger.info("reply_img:"+msg)
 
 # LINE 回傳訊息函式
 def reply_message(msg, rk, token):
@@ -338,8 +350,9 @@ def reply_message(msg, rk, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    print("reply_message:"+msg)
-    logging.info("reply_message:"+msg)
+    #print("reply_message:"+msg)
+    #logging.info("reply_message:"+msg)
+    logger.info("reply_img:"+msg)
 
 # LINE push 訊息函式
 def push_message(msg, uid, token):
@@ -352,8 +365,9 @@ def push_message(msg, uid, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/push', headers=headers,data=json.dumps(body).encode('utf-8'))
-    print("push_msg:"+msg)
-    logging.info("push_msg:"+msg)
+    #print("push_msg:"+msg)
+    #logging.info("push_msg:"+msg)
+    logger.info("reply_img:"+msg)
 
 app = Flask(__name__)
 
@@ -407,9 +421,10 @@ def linebot():
                 reply_message(reply_msg , tk, access_token)
             elif text == '牡羊' or '金牛' or '雙子' or '巨蟹' or '獅子' or '處女' or '天秤' or '天蠍' or '射手' or '魔羯' or '水瓶' or '雙魚':
                 reply_message(get_luck(text), tk, access_token)
-            else:
-                print(text)
-                logging.info(text)
+            #else:
+                #print(text)
+                #logging.info(text)
+                #logger.info(text)
         if type=='audio':
             message_id = json_data['events'][0]['message']['id']
             headers = {'Authorization':f'Bearer {access_token}'}
@@ -420,14 +435,17 @@ def linebot():
             tr_json = json.loads(str(transcript))
             reply_message(tr_json['text'], tk, access_token)
         if type=='sticker':
-            print('sticker')
-            logging.info('sticker')
+            #print('sticker')
+            #logging.info('sticker')
+            logger.info('sticker')
         if type=='video':
-            print('video')
-            logging.info('video')
+            #print('video')
+            #logging.info('video')
+            logger.info('video')
     except:
-        print('error')                                          # 如果發生錯誤，印出error
-        logging.warning('error')
+        #print('error')                                          # 如果發生錯誤，印出error
+        #logging.warning('error')
+        logger.warning('exception')
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
 
 if __name__ == "__main__":

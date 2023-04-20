@@ -1,4 +1,5 @@
 FROM python:3.9.16-slim
+RUN mkdir -p /var/log/line-bot
 WORKDIR /app
 COPY requirements.txt requirements.txt
 
