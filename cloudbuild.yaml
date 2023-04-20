@@ -1,8 +1,4 @@
 steps:
-  - name: bash
-    script: |
-      (echo "import gcl" && cat app.py) > tmp_file && mv tmp_file app.py
-    id: Bash
   - name: gcr.io/cloud-builders/docker
     args:
       - build
