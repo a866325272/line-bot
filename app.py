@@ -20,6 +20,7 @@ openai.api_key = openai_token
 #logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log_path = '/var/log/line-bot/'
 logger = logging.getLogger('')
+logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
 rotate_handler = logging.handlers.TimedRotatingFileHandler(log_path+'line-bot.log',when="h",interval=1,backupCount=720)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
