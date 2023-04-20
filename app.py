@@ -17,11 +17,14 @@ openai_token = os.getenv('OPENAI_TOKEN')
 openai.api_key = openai_token
 
 # log config
-logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log_path = '/var/log/line-bot/'
 logger = logging.getLogger('')
 console_handler = logging.StreamHandler()
 rotate_handler = logging.handlers.TimedRotatingFileHandler(log_path+'line-bot.log',when="h",interval=1,backupCount=720)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+rotate_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
 
@@ -335,8 +338,6 @@ def reply_image(msg, rk, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    #print("reply_img:"+msg)
-    #logging.info("reply_img:"+msg)
     logger.info("reply_img:"+msg)
 
 # LINE 回傳訊息函式
@@ -350,8 +351,6 @@ def reply_message(msg, rk, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    #print("reply_message:"+msg)
-    #logging.info("reply_message:"+msg)
     logger.info("reply_img:"+msg)
 
 # LINE push 訊息函式
@@ -365,8 +364,6 @@ def push_message(msg, uid, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/push', headers=headers,data=json.dumps(body).encode('utf-8'))
-    #print("push_msg:"+msg)
-    #logging.info("push_msg:"+msg)
     logger.info("reply_img:"+msg)
 
 app = Flask(__name__)
@@ -393,6 +390,7 @@ def linebot():
             reply_message(f'{current_weather(address)}\n\n{aqi(address)}\n\n{forecast(address)}', tk, access_token)
         if type=='text':
             text = json_data['events'][0]['message']['text']     # 取得 LINE 收到的文字訊息
+            logger.info('text')
             if text == '雷達回波圖' or text == '雷達回波':
                 reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
             elif text == '地震資訊' or text == '地震':
@@ -423,8 +421,6 @@ def linebot():
                 reply_message(get_luck(text), tk, access_token)
             #else:
                 #print(text)
-                #logging.info(text)
-                #logger.info(text)
         if type=='audio':
             message_id = json_data['events'][0]['message']['id']
             headers = {'Authorization':f'Bearer {access_token}'}
@@ -435,17 +431,11 @@ def linebot():
             tr_json = json.loads(str(transcript))
             reply_message(tr_json['text'], tk, access_token)
         if type=='sticker':
-            #print('sticker')
-            #logging.info('sticker')
             logger.info('sticker')
         if type=='video':
-            #print('video')
-            #logging.info('video')
             logger.info('video')
     except:
-        #print('error')                                          # 如果發生錯誤，印出error
-        #logging.warning('error')
-        logger.warning('exception')
+        logger.warning('exception')                             # 如果發生錯誤，印出error
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
 
 if __name__ == "__main__":
