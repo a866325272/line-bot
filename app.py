@@ -390,7 +390,7 @@ def linebot():
             reply_message(f'{current_weather(address)}\n\n{aqi(address)}\n\n{forecast(address)}', tk, access_token)
         if type=='text':
             text = json_data['events'][0]['message']['text']     # 取得 LINE 收到的文字訊息
-            logger.info('text')
+            logger.info(text)
             if text == '雷達回波圖' or text == '雷達回波':
                 reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
             elif text == '地震資訊' or text == '地震':
