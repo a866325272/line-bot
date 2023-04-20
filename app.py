@@ -17,7 +17,6 @@ openai_token = os.getenv('OPENAI_TOKEN')
 openai.api_key = openai_token
 
 # log config
-#logging.basicConfig(level=logging.INFO,format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log_path = '/var/log/line-bot/'
 logger = logging.getLogger('')
 logger.setLevel(logging.INFO)
