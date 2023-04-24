@@ -28,6 +28,16 @@ console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
 
+# 語音轉文字
+def speech_to_text(message_id):
+    headers = {'Authorization':f'Bearer {access_token}'}
+    req = requests.request('GET', f'https://api-data.line.me/v2/bot/message/{message_id}/content', headers=headers)
+    open("temp.wav","wb").write(req.content)
+    f = open("temp.wav", "rb")
+    transcript = openai.Audio.transcribe("whisper-1", f)
+    tr_json = json.loads(str(transcript))
+    return tr_json['text']
+
 # 取得今日星座運勢
 def get_luck(sign):
     json_zodiac = {"牡羊": "0", "金牛": "1", "雙子": "2", "巨蟹": "3", "獅子": "4", "處女": "5", "天秤": "6", "天蠍": "7", "射手": "8", "魔羯": "9", "水瓶": "10", "雙魚": "11"}
@@ -422,14 +432,7 @@ def linebot():
             #else:
                 #print(text)
         if type=='audio':
-            message_id = json_data['events'][0]['message']['id']
-            headers = {'Authorization':f'Bearer {access_token}'}
-            req = requests.request('GET', f'https://api-data.line.me/v2/bot/message/{message_id}/content', headers=headers)
-            open("temp.wav","wb").write(req.content)
-            f = open("temp.wav", "rb")
-            transcript = openai.Audio.transcribe("whisper-1", f)
-            tr_json = json.loads(str(transcript))
-            reply_message(tr_json['text'], tk, access_token)
+            reply_message(speech_to_text(json_data['events'][0]['message']['id']), tk, access_token)
         if type=='sticker':
             logger.info('sticker')
         if type=='video':
