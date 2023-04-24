@@ -1,5 +1,5 @@
 from flask import Flask, request
-import requests, json, time, statistics, numpy, os, openai
+import requests, json, time, statistics, numpy, os, openai, datetime
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
@@ -27,6 +27,44 @@ rotate_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
+
+# 取得加密貨幣交易對列表
+def get_cryptocurrency_market():
+    msg=''
+    data = requests.get('https://max-api.maicoin.com/api/v2/markets')
+    json_data = data.json()
+    print(len(json_data))
+    for i in json_data:
+        msg += f'id:{i["id"]},交易對:{i["name"]}\n'
+    msg = msg[0:len(msg)-1]
+    return(msg)
+# 取得加密貨幣價格
+def cryptocurrency(market):
+    try:
+        trades = requests.get(f'https://max-api.maicoin.com/api/v2/trades?market={market}') #取得成交列表
+        trades_data = trades.json()
+        timestamp = trades_data[0]['created_at']
+        datetime_obj = datetime.datetime.fromtimestamp(timestamp)
+        price = trades_data[0]['price']
+        volume = trades_data[0]['volume']
+        market_name = trades_data[0]['market_name']
+        side = trades_data[0]['side']
+        if side == 'bid':
+            side = '賣'
+        elif side == 'ask':
+            side = '買'
+
+        depth = requests.get(f'https://max-api.maicoin.com/api/v2/depth?market={market}')   #取得掛單簿
+        depth_data = depth.json()
+        ask_price = depth_data['asks'][-1][0]
+        ask_volume = depth_data['asks'][-1][1]
+        bid_price = depth_data['bids'][0][0]
+        bid_volume = depth_data['bids'][0][1]
+
+        msg = f'{market_name} 最新成交({side}):\n成交時間:{datetime_obj}\n成交價:{price}\t成交量:{volume}\n{market_name} 掛單簿:\n賣 價格:{ask_price}\t數量:{ask_volume}\n買 價格:{bid_price}\t數量:{bid_volume}'
+        return msg
+    except:
+        return "格式錯誤"
 
 # 語音轉文字
 def speech_to_text(message_id):
@@ -361,7 +399,7 @@ def reply_message(msg, rk, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    logger.info("reply_img:"+msg)
+    logger.info("reply_msg:"+msg)
 
 # LINE push 訊息函式
 def push_message(msg, uid, token):
@@ -374,7 +412,7 @@ def push_message(msg, uid, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/push', headers=headers,data=json.dumps(body).encode('utf-8'))
-    logger.info("reply_img:"+msg)
+    logger.info("push_msg:"+msg)
 
 app = Flask(__name__)
 
@@ -424,13 +462,17 @@ def linebot():
                 reply_image(get_meme(), tk, access_token)
             elif text == '抽':
                 reply_image(get_beauty(), tk, access_token)
-            elif text == '!help' or text == '！help':
-                reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - OpenAI合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音辨識轉文字'
-                reply_message(reply_msg , tk, access_token)
-            elif text == '牡羊' or '金牛' or '雙子' or '巨蟹' or '獅子' or '處女' or '天秤' or '天蠍' or '射手' or '魔羯' or '水瓶' or '雙魚':
+            elif text == ('牡羊' or '金牛' or '雙子' or '巨蟹' or '獅子' or '處女' or '天秤' or '天蠍' or '射手' or '魔羯' or '水瓶' or '雙魚'):
                 reply_message(get_luck(text), tk, access_token)
-            #else:
-                #print(text)
+            elif text == '!help' or text == '！help':
+                reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - OpenAI合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音辨識轉文字\n加密貨幣:<交易對id> - 顯示價格'
+                reply_message(reply_msg , tk, access_token)
+            #elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
+            #    reply_message(get_cryptocurrency_market(), tk, access_token)
+            elif text[0:5] == '加密貨幣:' or text == '加密貨幣：':
+                reply_message(cryptocurrency(text[5:]), tk, access_token)
+            else:
+                pass
         if type=='audio':
             reply_message(speech_to_text(json_data['events'][0]['message']['id']), tk, access_token)
         if type=='sticker':
