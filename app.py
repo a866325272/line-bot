@@ -38,6 +38,7 @@ def get_cryptocurrency_market():
         msg += f'id:{i["id"]},交易對:{i["name"]}\n'
     msg = msg[0:len(msg)-1]
     return(msg)
+
 # 取得加密貨幣價格
 def cryptocurrency(market):
     try:
@@ -462,7 +463,7 @@ def linebot():
                 reply_image(get_meme(), tk, access_token)
             elif text == '抽':
                 reply_image(get_beauty(), tk, access_token)
-            elif text == ('牡羊' or '金牛' or '雙子' or '巨蟹' or '獅子' or '處女' or '天秤' or '天蠍' or '射手' or '魔羯' or '水瓶' or '雙魚'):
+            elif text in ('牡羊','金牛','雙子','巨蟹','獅子','處女','天秤','天蠍','射手','魔羯','水瓶','雙魚'):
                 reply_message(get_luck(text), tk, access_token)
             elif text == '!help' or text == '！help':
                 reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - OpenAI合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音辨識轉文字\n加密貨幣:<交易對id> - 顯示價格'
