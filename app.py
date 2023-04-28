@@ -14,7 +14,7 @@ cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
-google_adc = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+
 log_path = os.getenv('LOG_PATH')
 import firestore
 openai.api_key = openai_token
