@@ -1,9 +1,9 @@
 steps:
-  - name: 'bash'
-    script: |
-      #!/usr/bin/env bash
-      grep "google_adc" app.py | sed -i '/google_adc/d' app.py
-  - name: gcr.io/cloud-builders/docker
+#  - name: 'bash'
+#    script: |
+#      #!/usr/bin/env bash
+#      grep "google_adc" app.py | sed -i '/google_adc/d' app.py
+#  - name: gcr.io/cloud-builders/docker
     args:
       - build
       - '--no-cache'
