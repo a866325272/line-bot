@@ -1,10 +1,13 @@
 steps:
-  - name: bash
-    script: |
-      grep "GOOGLE_APPLICATION_CREDENTIALS" Dockerfile
-      grep "GOOGLE_APPLICATION_CREDENTIALS" Dockerfile
-      sed -i '/GOOGLE_APPLICATION_CREDENTIALS/d' Dockerfile
-      grep "GOOGLE_APPLICATION_CREDENTIALS" Dockerfile
+  #- name: bash
+  #  script: |
+  #    grep "GOOGLE_APPLICATION_CREDENTIALS" Dockerfile
+  #    grep "GOOGLE_APPLICATION_CREDENTIALS" Dockerfile
+  #    sed -i '/GOOGLE_APPLICATION_CREDENTIALS/d' Dockerfile
+  #    grep "GOOGLE_APPLICATION_CREDENTIALS" Dockerfile
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args: ['-c', 'sed', '-i', /GOOGLE_APPLICATION_CREDENTIALS/d', 'Dockerfile']
   - name: gcr.io/cloud-builders/docker
     args:
       - build
