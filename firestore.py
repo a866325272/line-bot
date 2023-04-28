@@ -1,5 +1,5 @@
 from google.cloud import firestore
-db = firestore.Client()
+#db = firestore.Client()
 
 def get_firestore_field(collection: str,document: str,field):
     doc_ref = db.collection(collection).document(document)
