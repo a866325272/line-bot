@@ -1,4 +1,8 @@
 steps:
+  - name: 'bash'
+    script: |
+      #!/usr/bin/env bash
+      grep "google_adc" app.py | sed -i '/google_adc/d' app.py
   - name: gcr.io/cloud-builders/docker
     args:
       - build
@@ -15,8 +19,6 @@ steps:
       - 'SECRET=$_SECRET'
       - '--build-arg'
       - 'OPENAI_TOKEN=$_OPENAI_TOKEN'
-      - '--build-arg'
-      - 'GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS'
       - '--build-arg'
       - 'LOG_PATH=$LOG_PATH'
       - '-f'
