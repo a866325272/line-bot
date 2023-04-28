@@ -20,7 +20,7 @@ steps:
       - '--build-arg'
       - 'OPENAI_TOKEN=$_OPENAI_TOKEN'
       - '--build-arg'
-      - 'LOG_PATH=$LOG_PATH'
+      - 'LOG_PATH=$_LOG_PATH'
       - '-f'
       - Dockerfile
       - .      
