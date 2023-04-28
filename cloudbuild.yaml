@@ -15,6 +15,10 @@ steps:
       - 'SECRET=$_SECRET'
       - '--build-arg'
       - 'OPENAI_TOKEN=$_OPENAI_TOKEN'
+      - '--build-arg'
+      - 'GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS'
+      - '--build-arg'
+      - 'LOG_PATH=$LOG_PATH'
       - '-f'
       - Dockerfile
       - .      
