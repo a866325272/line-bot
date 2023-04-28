@@ -1,19 +1,19 @@
+from google.cloud import firestore
 from flask import Flask, request
-import requests, json, time, statistics, numpy, os, openai, datetime
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
-#from chatgpt import ChatGPT
 from random import choice
 from bs4 import BeautifulSoup
-import random
-import logging
 from logging.handlers import TimedRotatingFileHandler
+import requests, json, time, statistics, numpy, os, openai, datetime, random, logging, firestore
+
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
+google_adc = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 openai.api_key = openai_token
 
 # log config
@@ -28,12 +28,23 @@ console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
 
+# 對話模式
+def chatmode(input: str,client: str,ID: str) -> str:
+    firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "user", "content": input}])
+    messages = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'messages')
+    logger.info(messages)
+    chat = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo", messages=messages
+    )
+    reply = chat.choices[0].message.content
+    firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "assistant", "content": reply}])
+    return reply
+
 # 取得加密貨幣交易對列表
 def get_cryptocurrency_market():
     msg=''
     data = requests.get('https://max-api.maicoin.com/api/v2/markets')
     json_data = data.json()
-    print(len(json_data))
     for i in json_data:
         msg += f'id:{i["id"]},交易對:{i["name"]}\n'
     msg = msg[0:len(msg)-1]
@@ -423,14 +434,17 @@ def linebot():
     body = request.get_data(as_text=True)                       # 取得收到的訊息內容
     try:
         json_data = json.loads(body)                            # json 格式化訊息內容
-        #line_bot_api = LineBotApi(access_token)                 # 確認 token 是否正確
         handler = WebhookHandler(secret)                        # 確認 secret 是否正確
         signature = request.headers['X-Line-Signature']         # 加入回傳的 headers
         handler.handle(body, signature)                         # 綁定訊息回傳的相關資訊
         tk = json_data['events'][0]['replyToken']               # 取得回傳訊息的 Token       
         user_id = json_data['events'][0]['source']['userId']    # 取得發出請求的UserID
+        client = "User"
+        ID = user_id
         try:
             group_id = json_data['events'][0]['source']['groupId']  # 取得發出請求的GroupID
+            client = "Group"
+            ID = group_id
         except:
             pass
         type = json_data['events'][0]['message']['type']        # 取得 LINe 收到的訊息類型
@@ -440,40 +454,54 @@ def linebot():
         if type=='text':
             text = json_data['events'][0]['message']['text']     # 取得 LINE 收到的文字訊息
             logger.info(text)
-            if text == '雷達回波圖' or text == '雷達回波':
-                reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
-            elif text == '地震資訊' or text == '地震':
-                quake = earth_quake()                           # 爬取地震資訊
-                try:
-                    push_message(quake[0], group_id, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
-                except:
-                    push_message(quake[0], user_id, access_token)
-                reply_image(quake[1], tk, access_token)         # 傳送地震圖片 ( 用 reply 方法 )
-            elif text[0:2] == '畫，' or text[0:2] == '畫,':
-                openai_image_url = dalle(text[2:])
-                reply_image(openai_image_url, tk, access_token)
-            elif text[0:2] == '聊，' or text[0:2] == '聊,':
-                #chatgpt = ChatGPT()
-                #chatgpt.add_msg(f"Human:{text[2:]}\n")
-                completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文回覆)"}])
-                #reply_msg = chatgpt.get_response().replace("AI:", "", 1)
-                reply_msg = completion.choices[0].message.content
-                reply_message(reply_msg, tk, access_token)
-            elif text == '扛' or text == '坦':
-                reply_image(get_meme(), tk, access_token)
-            elif text == '抽':
-                reply_image(get_beauty(), tk, access_token)
-            elif text in ('牡羊','金牛','雙子','巨蟹','獅子','處女','天秤','天蠍','射手','魔羯','水瓶','雙魚'):
-                reply_message(get_luck(text), tk, access_token)
-            elif text == '!help' or text == '！help':
-                reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - OpenAI合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音辨識轉文字\n加密貨幣:<交易對id> - 顯示價格'
-                reply_message(reply_msg , tk, access_token)
-            #elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
-            #    reply_message(get_cryptocurrency_market(), tk, access_token)
-            elif text[0:5] == '加密貨幣:' or text == '加密貨幣：':
-                reply_message(cryptocurrency(text[5:]), tk, access_token)
+            if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsTalking'):
+                if text[0:6] == '開始對話模式':
+                    reply_message("對話模式已開始", tk, access_token)
+                elif text[0:6] == '結束對話模式':
+                    firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsTalking',False)
+                    firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
+                    reply_message("對話模式已結束", tk, access_token)
+                elif text[0:6] == '清空對話紀錄':
+                    firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
+                    reply_message("對話紀錄已清空", tk, access_token)
+                else:
+                    reply_message(chatmode(text,client,ID), tk, access_token)  
             else:
-                pass
+                if text == '雷達回波圖' or text == '雷達回波':
+                    reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
+                elif text == '地震資訊' or text == '地震':
+                    quake = earth_quake()                           # 爬取地震資訊
+                    try:
+                        push_message(quake[0], group_id, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
+                    except:
+                        push_message(quake[0], user_id, access_token)
+                    reply_image(quake[1], tk, access_token)         # 傳送地震圖片 ( 用 reply 方法 )
+                elif text[0:2] == '畫，' or text[0:2] == '畫,':
+                    openai_image_url = dalle(text[2:])
+                    reply_image(openai_image_url, tk, access_token)
+                elif text[0:2] == '聊，' or text[0:2] == '聊,':
+                    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文回覆)"}])
+                    reply_msg = completion.choices[0].message.content
+                    reply_message(reply_msg, tk, access_token)
+                elif text == '扛' or text == '坦':
+                    reply_image(get_meme(), tk, access_token)
+                elif text == '抽':
+                    reply_image(get_beauty(), tk, access_token)
+                elif text in ('牡羊','金牛','雙子','巨蟹','獅子','處女','天秤','天蠍','射手','魔羯','水瓶','雙魚'):
+                    reply_message(get_luck(text), tk, access_token)
+                elif text == '!help' or text == '！help':
+                    reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - OpenAI合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音辨識轉文字\n加密貨幣:<交易對id> - 顯示價格'
+                    reply_message(reply_msg , tk, access_token)
+                #elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
+                #    reply_message(get_cryptocurrency_market(), tk, access_token)
+                elif text[0:5] == '加密貨幣:' or text == '加密貨幣：':
+                    reply_message(cryptocurrency(text[5:]), tk, access_token)
+                elif text[0:6] == '開始對話模式':
+                    firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsTalking',True)
+                    firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
+                    reply_message('對話模式已開始', tk, access_token)
+                else:
+                    pass
         if type=='audio':
             reply_message(speech_to_text(json_data['events'][0]['message']['id']), tk, access_token)
         if type=='sticker':

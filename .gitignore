@@ -2,3 +2,5 @@ __pycache__
 temp.wav
 log
 line-bot.log
+line-bot.log.*
+watermelon-368305-firestore.json
