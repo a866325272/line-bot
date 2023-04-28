@@ -7,7 +7,7 @@ steps:
   #    grep "GOOGLE_APPLICATION_CREDENTIALS" Dockerfile
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
-    args: ['-c', 'sed', '-i', /GOOGLE_APPLICATION_CREDENTIALS/d', 'Dockerfile']
+    args: ['-c', 'sed', '-i', '/GOOGLE_APPLICATION_CREDENTIALS/d', 'Dockerfile']
   - name: gcr.io/cloud-builders/docker
     args:
       - build
