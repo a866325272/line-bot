@@ -19,6 +19,8 @@ pipeline {
                 --build-arg  EPA_TOKEN=${EPA_TOKEN} \
                 --build-arg  OPENAI_TOKEN=${OPENAI_TOKEN} \
                 --build-arg  SECRET=${SECRET} \
+                --build-arg  GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS} \
+                --build-arg  LOG_PATH=${LOG_PATH} \
                 .'''
             }
         }

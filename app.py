@@ -1,23 +1,25 @@
 from google.cloud import firestore
 from flask import Flask, request
-from linebot import LineBotApi, WebhookHandler
+from linebot import WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
 from random import choice
 from bs4 import BeautifulSoup
 from logging.handlers import TimedRotatingFileHandler
-import requests, json, time, statistics, numpy, os, openai, datetime, random, logging, firestore
-
+from dotenv import load_dotenv
+import requests, json, time, statistics, numpy, os, openai, datetime, random, logging
+load_dotenv()
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
-google_adc = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+google_adc = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+log_path = os.getenv('LOG_PATH')
+import firestore
 openai.api_key = openai_token
 
 # log config
-log_path = '/var/log/line-bot/'
 logger = logging.getLogger('')
 logger.setLevel(logging.INFO)
 console_handler = logging.StreamHandler()
