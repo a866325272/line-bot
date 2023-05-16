@@ -7,3 +7,4 @@ soupsieve==2.3.2.post1
 beautifulsoup4==4.11.1
 google-cloud-firestore==2.11.1
 python-dotenv==1.0.0
+google-cloud-texttospeech==2.14.1

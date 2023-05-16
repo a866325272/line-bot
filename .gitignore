@@ -1,6 +1,7 @@
 __pycache__
 .env
 temp.wav
+text-to-speech.wav
 log
 line-bot.log
 line-bot.log.*

@@ -7,6 +7,7 @@ from random import choice
 from bs4 import BeautifulSoup
 from logging.handlers import TimedRotatingFileHandler
 from dotenv import load_dotenv
+import google.cloud.texttospeech as tts
 import requests, json, time, statistics, numpy, os, openai, datetime, random, logging
 load_dotenv()
 epa_token = os.getenv('EPA_TOKEN')
@@ -28,6 +29,47 @@ rotate_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
+
+# 文字轉語音
+def text_to_wav(voice_name: str, text: str):
+    language_code = "-".join(voice_name.split("-")[:2])
+    print(language_code)
+    text_input = tts.SynthesisInput(text=text)
+    voice_params = tts.VoiceSelectionParams(
+        language_code=language_code, name=voice_name
+    )
+    audio_config = tts.AudioConfig(audio_encoding=tts.AudioEncoding.LINEAR16)
+
+    client = tts.TextToSpeechClient()
+    response = client.synthesize_speech(
+        input=text_input,
+        voice=voice_params,
+        audio_config=audio_config,
+    )
+
+    filename = "text-to-speech.wav"
+    with open(filename, "wb") as out:
+        out.write(response.audio_content)
+
+# 取得新聞
+def news(cat: str):
+    if cat == "焦點新聞":
+        url = "https://news.google.com/topics/CAAqKggKIiRDQkFTRlFvSUwyMHZNRFZxYUdjU0JYcG9MVlJYR2dKVVZ5Z0FQAQ?hl=zh-TW&gl=TW&ceid=TW%3Azh-Hant"
+    elif cat == "國際新聞":
+        url = "https://news.google.com/topics/CAAqKggKIiRDQkFTRlFvSUwyMHZNRGx1YlY4U0JYcG9MVlJYR2dKVVZ5Z0FQAQ?hl=zh-TW&gl=TW&ceid=TW%3Azh-Hant"
+    web = requests.get(url)
+    soup = BeautifulSoup(web.text, "html.parser")
+    tags = soup.select(".IBr9hb a")
+    links = []
+    for i in range(3):
+        links.append("https://news.google.com/"+tags[i]['href'][2::])
+    #縮網址
+    short_links = []
+    url = "https://tinyurl.com/api-create.php?url="
+    for i in links:
+        req = requests.request("GET", url+i)
+        short_links.append(req.text)
+    return short_links
 
 # 對話模式
 def chatmode(input: str,client: str,ID: str) -> str:
@@ -80,7 +122,7 @@ def cryptocurrency(market):
         return "格式錯誤"
 
 # 語音轉文字
-def speech_to_text(message_id):
+def speech_to_text(message_id) -> str:
     headers = {'Authorization':f'Bearer {access_token}'}
     req = requests.request('GET', f'https://api-data.line.me/v2/bot/message/{message_id}/content', headers=headers)
     open("temp.wav","wb").write(req.content)
@@ -415,10 +457,10 @@ def reply_message(msg, rk, token):
     logger.info("reply_msg:"+msg)
 
 # LINE push 訊息函式
-def push_message(msg, uid, token):
+def push_message(msg, ID, token):
     headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}   
     body = {
-    'to':uid,
+    'to':ID,
     'messages':[{
             "type": "text",
             "text": msg
@@ -472,10 +514,7 @@ def linebot():
                     reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
                 elif text == '地震資訊' or text == '地震':
                     quake = earth_quake()                           # 爬取地震資訊
-                    try:
-                        push_message(quake[0], group_id, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
-                    except:
-                        push_message(quake[0], user_id, access_token)
+                    push_message(quake[0], ID, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
                     reply_image(quake[1], tk, access_token)         # 傳送地震圖片 ( 用 reply 方法 )
                 elif text[0:2] == '畫，' or text[0:2] == '畫,':
                     openai_image_url = dalle(text[2:])
@@ -491,7 +530,7 @@ def linebot():
                 elif text in ('牡羊','金牛','雙子','巨蟹','獅子','處女','天秤','天蠍','射手','魔羯','水瓶','雙魚'):
                     reply_message(get_luck(text), tk, access_token)
                 elif text == '!help' or text == '！help':
-                    reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - OpenAI合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音辨識轉文字\n加密貨幣:<交易對id> - 顯示價格\n對話模式:\n - 開始對話模式\n - 結束對話模式\n - 清空對話紀錄'
+                    reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - OpenAI合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢\n焦點新聞\n國際新聞\n語音訊息 - 語音辨識轉文字後翻譯成繁體中文\n加密貨幣:<交易對id> - 顯示價格\n對話模式:\n - 開始對話模式\n - 結束對話模式\n - 清空對話紀錄'
                     reply_message(reply_msg , tk, access_token)
                 #elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
                 #    reply_message(get_cryptocurrency_market(), tk, access_token)
@@ -501,10 +540,18 @@ def linebot():
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsTalking',True)
                     firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
                     reply_message('對話模式已開始', tk, access_token)
+                elif text == "焦點新聞" or text == "國際新聞":
+                    if text == "焦點新聞":
+                        msg = news("焦點新聞")
+                    elif text == "國際新聞":
+                        msg = news("國際新聞")
+                    reply_message(msg[0][8::]+"\n"+msg[1][8::]+"\n"+msg[2][8::], tk, access_token)
                 else:
                     pass
         if type=='audio':
-            reply_message(speech_to_text(json_data['events'][0]['message']['id']), tk, access_token)
+            completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": "你現在是一個專業的翻譯員，請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
+            reply_msg = completion.choices[0].message.content
+            reply_message(reply_msg, tk, access_token)
         if type=='sticker':
             logger.info('sticker')
         if type=='video':
