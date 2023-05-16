@@ -16,7 +16,8 @@ access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
 log_path = os.getenv('LOG_PATH')
-import firestore
+import firestore    # firestore operations
+import gcs          # gcs operations
 openai.api_key = openai_token
 
 # log config
@@ -31,9 +32,8 @@ logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
 
 # 文字轉語音
-def text_to_wav(voice_name: str, text: str):
+def text_to_speech(voice_name: str, text: str):
     language_code = "-".join(voice_name.split("-")[:2])
-    print(language_code)
     text_input = tts.SynthesisInput(text=text)
     voice_params = tts.VoiceSelectionParams(
         language_code=language_code, name=voice_name
@@ -443,6 +443,20 @@ def reply_image(msg, rk, token):
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
     logger.info("reply_img:"+msg)
 
+# LINE 回傳語音函式
+def reply_audio(msg, rk, token):
+    headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
+    body = {
+    'replyToken':rk,
+    'messages':[{
+          'type': 'audio',
+          'originalContentUrl': msg,
+          'duration': '600000'
+        }]
+    }
+    req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
+    logger.info("reply_audio:"+msg)
+
 # LINE 回傳訊息函式
 def reply_message(msg, rk, token):
     headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
@@ -549,9 +563,13 @@ def linebot():
                 else:
                     pass
         if type=='audio':
-            completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": "你現在是一個專業的翻譯員，請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
-            reply_msg = completion.choices[0].message.content
-            reply_message(reply_msg, tk, access_token)
+            completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
+            msg = completion.choices[0].message.content
+            push_message(msg, ID, access_token)
+            text_to_speech("cmn-TW-Wavenet-C",msg)
+            gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./text-to-speech.wav", f'text-to-speech/text-to-speech{tk}.wav')
+            gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'text-to-speech/text-to-speech{tk}.wav')
+            reply_audio(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/text-to-speech/text-to-speech{tk}.wav', tk, access_token)
         if type=='sticker':
             logger.info('sticker')
         if type=='video':

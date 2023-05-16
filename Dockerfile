@@ -22,5 +22,6 @@ ENV LOG_PATH ${LOG_PATH}
 RUN pip3 install -r requirements.txt
 COPY app.py app.py
 COPY firestore.py firestore.py
+COPY gcs.py gcs.py
 CMD ["python3", "app.py"]
 #CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
