@@ -77,7 +77,7 @@ def chatmode(input: str,client: str,ID: str) -> str:
     messages = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'messages')
     logger.info(messages)
     chat = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo", messages=messages
+        model="gpt-3.5-turbo-0613", messages=messages
     )
     reply = chat.choices[0].message.content
     firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "assistant", "content": reply}])
@@ -534,7 +534,7 @@ def linebot():
                     openai_image_url = dalle(text[2:])
                     reply_image(openai_image_url, tk, access_token)
                 elif text[0:2] == '聊，' or text[0:2] == '聊,':
-                    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文回覆)"}])
+                    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo-0613", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文回覆)"}])
                     reply_msg = completion.choices[0].message.content
                     reply_message(reply_msg, tk, access_token)
                 elif text == '扛' or text == '坦':
@@ -563,7 +563,7 @@ def linebot():
                 else:
                     pass
         if type=='audio':
-            completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
+            completion = openai.ChatCompletion.create(model="gpt-3.5-turbo-0613", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
             msg = completion.choices[0].message.content
             push_message(msg, ID, access_token)
             text_to_speech("cmn-TW-Wavenet-C",msg)
