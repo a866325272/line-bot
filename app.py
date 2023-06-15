@@ -526,6 +526,8 @@ def linebot():
             else:
                 if text == '雷達回波圖' or text == '雷達回波':
                     reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
+                elif text == '衛星雲圖':
+                    reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
                 elif text == '地震資訊' or text == '地震':
                     quake = earth_quake()                           # 爬取地震資訊
                     push_message(quake[0], ID, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
