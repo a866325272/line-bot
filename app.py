@@ -59,6 +59,14 @@ def news(cat: str):
         url = "https://news.google.com/topics/CAAqKggKIiRDQkFTRlFvSUwyMHZNRFZxYUdjU0JYcG9MVlJYR2dKVVZ5Z0FQAQ?hl=zh-TW&gl=TW&ceid=TW%3Azh-Hant"
     elif cat == "國際新聞":
         url = "https://news.google.com/topics/CAAqKggKIiRDQkFTRlFvSUwyMHZNRGx1YlY4U0JYcG9MVlJYR2dKVVZ5Z0FQAQ?hl=zh-TW&gl=TW&ceid=TW%3Azh-Hant"
+    elif cat == "商業新聞":
+        url = "https://news.google.com/topics/CAAqKggKIiRDQkFTRlFvSUwyMHZNRGx6TVdZU0JYcG9MVlJYR2dKVVZ5Z0FQAQ?hl=zh-TW&gl=TW&ceid=TW%3Azh-Hant"
+    elif cat == "科技新聞":
+        url = "https://news.google.com/topics/CAAqLAgKIiZDQkFTRmdvSkwyMHZNR1ptZHpWbUVnVjZhQzFVVnhvQ1ZGY29BQVAB?hl=zh-TW&gl=TW&ceid=TW%3Azh-Hant"
+    elif cat == "體育新聞":
+        url = "https://news.google.com/topics/CAAqKggKIiRDQkFTRlFvSUwyMHZNRFp1ZEdvU0JYcG9MVlJYR2dKVVZ5Z0FQAQ?hl=zh-TW&gl=TW&ceid=TW%3Azh-Hant"
+    elif cat == "娛樂新聞":
+        url = "https://news.google.com/topics/CAAqKggKIiRDQkFTRlFvSUwyMHZNREpxYW5RU0JYcG9MVlJYR2dKVVZ5Z0FQAQ?hl=zh-TW&gl=TW&ceid=TW%3Azh-Hant"
     web = requests.get(url)
     soup = BeautifulSoup(web.text, "html.parser")
     tags = soup.select(".IBr9hb a")
@@ -82,7 +90,7 @@ def news(cat: str):
         title_end = req.text.find("</title>", title_start)
         title = req.text[title_start + 7:title_end].strip()
         titles.append(title)
-    content = {"type":"carousel","contents":[{"type":"bubble","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"xl","text":titles[0]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[0]}}]}},{"type":"bubble","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"xl","text":titles[1]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":links[1]}}]}},{"type":"bubble","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"xl","text":titles[2]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[2]}}]}}]}
+    content = {"type":"carousel","contents":[{"type":"bubble","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"md","text":titles[0]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[0]}}]}},{"type":"bubble","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"md","text":titles[1]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":links[1]}}]}},{"type":"bubble","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"md","text":titles[2]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[2]}}]}}]}
     return content
 
 # 對話模式
@@ -497,6 +505,7 @@ def push_message(msg, ID, token):
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/push', headers=headers,data=json.dumps(body).encode('utf-8'))
     logger.info("push_msg:"+msg)
 
+# LINE 回傳flex訊息
 def reply_flex_message(msg, content, rk, token):
     headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
     body = {
@@ -508,7 +517,7 @@ def reply_flex_message(msg, content, rk, token):
         }]
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    logger.info("push_flex_msg:"+msg)
+    logger.info("reply_flex_msg:"+msg)
 
 app = Flask(__name__)
 
@@ -617,7 +626,7 @@ def linebot():
                     reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目'
                     reply_message(reply_msg , tk, access_token)
                 elif text == '!新聞' or text == '！新聞':
-                    reply_msg = f'新聞指令說明\n焦點新聞 - 三則焦點新聞\n國際新聞 - 三則國際新聞'
+                    reply_msg = f'新聞指令說明\n焦點新聞 - 三則焦點新聞\n國際新聞 - 三則國際新聞\n商業新聞 - 三則商業新聞\n科技新聞 - 三則科技新聞\n體育新聞 - 三則體育新聞\n娛樂新聞 - 三則娛樂新聞'
                     reply_message(reply_msg , tk, access_token)
                 elif text == '!對話模式' or text == '！對話模式':
                     reply_msg = f'對話模式指令說明\n開始對話模式 - 開始ChatGPT對話模式\n結束對話模式 - 結束ChatGPT對話模式\n清空對話紀錄 - 在對話模式過程中使用此指令，可讓ChatGPT遺忘先前的對話紀錄'
@@ -628,15 +637,25 @@ def linebot():
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsTalking',True)
                     firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
                     reply_message('對話模式已開始', tk, access_token)
-                elif text == "焦點新聞" or text == "國際新聞":
+                elif text in ["焦點新聞","國際新聞","商業新聞","科技新聞","體育新聞","娛樂新聞"]:
                     if text == "焦點新聞":
                         content = news("焦點新聞")
                     elif text == "國際新聞":
                         content = news("國際新聞")
+                    elif text == "商業新聞":
+                        content = news("商業新聞")
+                    elif text == "科技新聞":
+                        content = news("科技新聞")
+                    elif text == "體育新聞":
+                        content = news("體育新聞")
+                    elif text == "娛樂新聞":
+                        content = news("娛樂新聞")
                     reply_flex_message(text, content, tk, access_token)
                 elif text == "記帳":
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',True)
                     reply_message('請輸入項目名稱', tk, access_token)
+                elif text == "月帳":
+                    pass
                 else:
                     pass
         if type=='audio':
