@@ -8,7 +8,9 @@ from bs4 import BeautifulSoup
 from logging.handlers import TimedRotatingFileHandler
 from dotenv import load_dotenv
 import google.cloud.texttospeech as tts
-import requests, json, time, statistics, numpy, os, openai, datetime, random, logging
+import datetime as dt
+import requests, json, time, statistics, numpy, os, openai, random, logging
+from datetime import timezone, timedelta, datetime
 load_dotenv()
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
@@ -62,14 +64,26 @@ def news(cat: str):
     tags = soup.select(".IBr9hb a")
     links = []
     for i in range(3):
-        links.append("https://news.google.com/"+tags[i]['href'][2::])
+        url = "https://news.google.com/"+tags[i]['href'][2::]
+        web = requests.get(url, allow_redirects=False)
+        links.append(web.headers['Location'])
     #縮網址
     short_links = []
+    titles = []
     url = "https://tinyurl.com/api-create.php?url="
     for i in links:
         req = requests.request("GET", url+i)
         short_links.append(req.text)
-    return short_links
+    #取得標題
+    for i in short_links:
+        url = i
+        req = requests.get(url)
+        title_start = req.text.find("<title>")
+        title_end = req.text.find("</title>", title_start)
+        title = req.text[title_start + 7:title_end].strip()
+        titles.append(title)
+    content = {"type":"carousel","contents":[{"type":"bubble","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"xl","text":titles[0]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[0]}}]}},{"type":"bubble","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"xl","text":titles[1]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":links[1]}}]}},{"type":"bubble","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"xl","text":titles[2]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[2]}}]}}]}
+    return content
 
 # 對話模式
 def chatmode(input: str,client: str,ID: str) -> str:
@@ -99,7 +113,7 @@ def cryptocurrency(market):
         trades = requests.get(f'https://max-api.maicoin.com/api/v2/trades?market={market}') #取得成交列表
         trades_data = trades.json()
         timestamp = trades_data[0]['created_at']
-        datetime_obj = datetime.datetime.fromtimestamp(timestamp)
+        datetime_obj = dt.datetime.fromtimestamp(timestamp)
         price = trades_data[0]['price']
         volume = trades_data[0]['volume']
         market_name = trades_data[0]['market_name']
@@ -483,6 +497,19 @@ def push_message(msg, ID, token):
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/push', headers=headers,data=json.dumps(body).encode('utf-8'))
     logger.info("push_msg:"+msg)
 
+def reply_flex_message(msg, content, rk, token):
+    headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
+    body = {
+    'replyToken':rk,
+    'messages':[{
+            "type": "flex",
+            "altText": msg,
+            "contents": content
+        }]
+    }
+    req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
+    logger.info("push_flex_msg:"+msg)
+
 app = Flask(__name__)
 
 @app.route("/", methods=['POST'])
@@ -522,7 +549,40 @@ def linebot():
                     firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
                     reply_message("對話紀錄已清空", tk, access_token)
                 else:
-                    reply_message(chatmode(text,client,ID), tk, access_token)  
+                    reply_message(chatmode(text,client,ID), tk, access_token)
+            elif firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName'):
+                if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType'):
+                    try:
+                        typ = int(text)
+                        if typ not in [1,2,3,4,5,6,7]:
+                            raise
+                        ammount = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
+                        name = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
+                        tz = timezone(timedelta(hours=+8))
+                        today = datetime.now(tz)
+                        date = today.strftime("%Y-%m-%d")
+                        firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'Accounts',[{"Name": name, "Ammount": ammount, "Type": typ, "Date": date}])
+                        firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
+                        firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
+                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',False)
+                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount',False)
+                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',False)
+                        reply_message(f'項目名稱:{name} 金額:{ammount} 類別:{typ} 輸入成功', tk, access_token)
+                    except:
+                        reply_message("格式錯誤，請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他", tk, access_token)
+                else:
+                    if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount'):
+                        try:
+                            ammount = float(text)
+                            firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount',ammount)
+                            firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',True)
+                            reply_message("請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他", tk, access_token)
+                        except:
+                            reply_message("格式錯誤，請輸入金額數字", tk, access_token)
+                    else:
+                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName',text)
+                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount',True)
+                        reply_message("請輸入金額", tk, access_token)
             else:
                 if text == '雷達回波圖' or text == '雷達回波':
                     reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-003.png?{time.time_ns()}', tk, access_token)
@@ -546,10 +606,22 @@ def linebot():
                 elif text in ('牡羊','金牛','雙子','巨蟹','獅子','處女','天秤','天蠍','射手','魔羯','水瓶','雙魚'):
                     reply_message(get_luck(text), tk, access_token)
                 elif text == '!help' or text == '！help':
-                    reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - OpenAI合成圖片\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報\n星座 例如:處女  - 回報運勢\n焦點新聞\n國際新聞\n語音訊息 - 語音辨識轉文字後翻譯成繁體中文\n加密貨幣:<交易對id> - 顯示價格\n對話模式:\n - 開始對話模式\n - 結束對話模式\n - 清空對話紀錄'
+                    reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - DALL-E合成圖片\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音翻譯機翻成繁體中文\n加密貨幣:<交易對id> - 顯示價格\n!氣象 - 氣象指令說明\n!新聞 - 新聞指令說明\n!對話模式 - 對話模式指令說明'
                     reply_message(reply_msg , tk, access_token)
                 #elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
                 #    reply_message(get_cryptocurrency_market(), tk, access_token)
+                elif text == '!氣象' or text == '！氣象':
+                    reply_msg = f'氣象指令說明\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送雷達回波圖\n衛星雲圖 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報'
+                    reply_message(reply_msg , tk, access_token)
+                elif text == '!記帳' or text == '！記帳':
+                    reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目'
+                    reply_message(reply_msg , tk, access_token)
+                elif text == '!新聞' or text == '！新聞':
+                    reply_msg = f'新聞指令說明\n焦點新聞 - 三則焦點新聞\n國際新聞 - 三則國際新聞'
+                    reply_message(reply_msg , tk, access_token)
+                elif text == '!對話模式' or text == '！對話模式':
+                    reply_msg = f'對話模式指令說明\n開始對話模式 - 開始ChatGPT對話模式\n結束對話模式 - 結束ChatGPT對話模式\n清空對話紀錄 - 在對話模式過程中使用此指令，可讓ChatGPT遺忘先前的對話紀錄'
+                    reply_message(reply_msg , tk, access_token)
                 elif text[0:5] == '加密貨幣:' or text == '加密貨幣：':
                     reply_message(cryptocurrency(text[5:]), tk, access_token)
                 elif text[0:6] == '開始對話模式':
@@ -558,10 +630,13 @@ def linebot():
                     reply_message('對話模式已開始', tk, access_token)
                 elif text == "焦點新聞" or text == "國際新聞":
                     if text == "焦點新聞":
-                        msg = news("焦點新聞")
+                        content = news("焦點新聞")
                     elif text == "國際新聞":
-                        msg = news("國際新聞")
-                    reply_message(msg[0][8::]+"\n"+msg[1][8::]+"\n"+msg[2][8::], tk, access_token)
+                        content = news("國際新聞")
+                    reply_flex_message(text, content, tk, access_token)
+                elif text == "記帳":
+                    firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',True)
+                    reply_message('請輸入項目名稱', tk, access_token)
                 else:
                     pass
         if type=='audio':
