@@ -53,7 +53,7 @@ def pie_chart(index: list, value: list):
     #fig = plt.figure(figsize =(10, 7))
     patches, labels, percentages = plt.pie(value, labels = index, autopct='%1.1f%%', textprops={'fontsize': 24})
     percentage_values = [p.get_text() for p in percentages]
-    plt.rcParams['font.sans-serif'] = ['SimSun']
+    plt.rcParams['font.family'] = 'WenQuanYi Zen Hei'
     # Adjusting padding
     plt.tight_layout(pad=0)
     # download plot
