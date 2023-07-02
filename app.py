@@ -48,7 +48,7 @@ def account_monthly(client, ID):
     return sum
 
 # 生成圓餅圖
-def pie_chart(index: list, value: list):
+def pie_chart(index: list, value: list, title: str):
     # Filter out 0% values
     non_zero_data = [d for d in value if d != 0]
     non_zero_labels = [l for d, l in zip(value, index) if d != 0]
@@ -61,6 +61,8 @@ def pie_chart(index: list, value: list):
     for l in zip(label_values,percentage_values):
         res[index.index(l[0])] = l[1]
     plt.rcParams['font.sans-serif'] = 'WenQuanYi Zen Hei'
+    # Set the figure title
+    plt.title(title, fontsize=24)
     # Adjusting padding
     plt.tight_layout(pad=0)
     # download plot
@@ -690,7 +692,7 @@ def linebot():
                     reply_message('請輸入項目名稱', tk, access_token)
                 elif text == "月帳":
                     sum = account_monthly(client, ID)
-                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他"],sum)
+                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他"],sum,"本月統計")
                     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
                     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
                     image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
