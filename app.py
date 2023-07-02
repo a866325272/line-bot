@@ -60,8 +60,7 @@ def pie_chart(index: list, value: list):
     label_values = [l.get_text() for l in labels]
     for l in zip(label_values,percentage_values):
         res[index.index(l[0])] = l[1]
-    plt.rcParams['font.family'] = 'WenQuanYi Zen Hei'
-    #plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
+    plt.rcParams['font.sans-serif'] = 'WenQuanYi Zen Hei'
     # Adjusting padding
     plt.tight_layout(pad=0)
     # download plot
