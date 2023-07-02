@@ -49,16 +49,22 @@ def account_monthly(client, ID):
 
 # 生成圓餅圖
 def pie_chart(index: list, value: list):
+    # Filter out 0% values
+    non_zero_data = [d for d in value if d != 0]
+    non_zero_labels = [l for d, l in zip(value, index) if d != 0]
+    res = ['0.0%','0.0%','0.0%','0.0%','0.0%','0.0%','0.0%']
     # Creating plot
-    #fig = plt.figure(figsize =(10, 7))
-    patches, labels, percentages = plt.pie(value, labels = index, autopct='%1.1f%%', textprops={'fontsize': 24})
+    patches, labels, percentages = plt.pie(non_zero_data, labels = non_zero_labels, autopct='%1.1f%%', textprops={'fontsize': 24})
     percentage_values = [p.get_text() for p in percentages]
+    label_values = [l.get_text() for l in labels]
+    for l in zip(label_values,percentage_values):
+        res[index.index(l[0])] = l[1]
     plt.rcParams['font.family'] = 'WenQuanYi Zen Hei'
     # Adjusting padding
     plt.tight_layout(pad=0)
     # download plot
     plt.savefig('accounts-pie-chart.png')
-    return(percentage_values)
+    return res
 
 # 文字轉語音
 def text_to_speech(voice_name: str, text: str):

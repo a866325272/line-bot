@@ -21,8 +21,7 @@ ENV LOG_PATH ${LOG_PATH}
 
 RUN pip3 install -r requirements.txt
 RUN apt-get update && apt-get install -y fonts-wqy-zenhei
-#RUN mkdir -p /root/.config/matplotlib
-#RUN echo "font.family: wqy-zenhei" >> /root/.config/matplotlib/matplotlibrc
+RUN rm -rf /root/.cache/matplotlib/*
 COPY app.py app.py
 COPY firestore.py firestore.py
 COPY gcs.py gcs.py
