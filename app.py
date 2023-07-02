@@ -54,12 +54,14 @@ def pie_chart(index: list, value: list):
     non_zero_labels = [l for d, l in zip(value, index) if d != 0]
     res = ['0.0%','0.0%','0.0%','0.0%','0.0%','0.0%','0.0%']
     # Creating plot
+    fig = plt.figure(figsize =(10, 7))
     patches, labels, percentages = plt.pie(non_zero_data, labels = non_zero_labels, autopct='%1.1f%%', textprops={'fontsize': 24})
     percentage_values = [p.get_text() for p in percentages]
     label_values = [l.get_text() for l in labels]
     for l in zip(label_values,percentage_values):
         res[index.index(l[0])] = l[1]
     plt.rcParams['font.family'] = 'WenQuanYi Zen Hei'
+    #plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
     # Adjusting padding
     plt.tight_layout(pad=0)
     # download plot
