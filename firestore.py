@@ -27,7 +27,7 @@ def update_firestore_field(collection: str,document: str,field: str,value):
             })
         #print(f'{collection}/{document}/{field}/{value} updated success')
     except:
-        #print(f'{collection}/{document}/{field}/{value} updated failed')
+        print(f'{collection}/{document}/{field}/{value} updated failed')
         pass
 
 def append_firestore_array_field(collection: str,document: str,field: str,value):
@@ -38,7 +38,7 @@ def append_firestore_array_field(collection: str,document: str,field: str,value)
         })
         #print(f'{collection}/{document}/{field}/{value} updated success')
     except:
-        #print(f'{collection}/{document}/{field}/{value} updated failed')
+        print(f'{collection}/{document}/{field}/{value} updated failed')
         pass
 
 def delete_firestore_field(collection: str,document: str,field):
@@ -46,4 +46,4 @@ def delete_firestore_field(collection: str,document: str,field):
     doc_ref.update({
         field: firestore.DELETE_FIELD
     })
-    #rint(f'{collection}/{document}/{field} deleted success')
+    #print(f'{collection}/{document}/{field} deleted success')

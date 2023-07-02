@@ -7,10 +7,11 @@ from random import choice
 from bs4 import BeautifulSoup
 from logging.handlers import TimedRotatingFileHandler
 from dotenv import load_dotenv
+from datetime import timezone, timedelta, datetime
+from matplotlib import pyplot as plt
 import google.cloud.texttospeech as tts
 import datetime as dt
 import requests, json, time, statistics, numpy, os, openai, random, logging
-from datetime import timezone, timedelta, datetime
 load_dotenv()
 epa_token = os.getenv('EPA_TOKEN')
 cwb_token = os.getenv('CWB_TOKEN')
@@ -32,6 +33,32 @@ rotate_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
+
+# 月帳統計
+def account_monthly(client, ID):
+    tz = timezone(timedelta(hours=+8))
+    today = datetime.now(tz)
+    date = today.strftime("%Y_%m_%d")
+    accounts = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7])
+    sum = [0,0,0,0,0,0,0]
+    for account in accounts:
+        for i in range(7):
+            if account['Type'] == i+1:
+                sum[i] += account['Ammount']
+    return sum
+
+# 生成圓餅圖
+def pie_chart(index: list, value: list):
+    # Creating plot
+    #fig = plt.figure(figsize =(10, 7))
+    patches, labels, percentages = plt.pie(value, labels = index, autopct='%1.1f%%', textprops={'fontsize': 24})
+    percentage_values = [p.get_text() for p in percentages]
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
+    # Adjusting padding
+    plt.tight_layout(pad=0)
+    # download plot
+    plt.savefig('accounts-pie-chart.png')
+    return(percentage_values)
 
 # 文字轉語音
 def text_to_speech(voice_name: str, text: str):
@@ -569,8 +596,8 @@ def linebot():
                         name = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
                         tz = timezone(timedelta(hours=+8))
                         today = datetime.now(tz)
-                        date = today.strftime("%Y-%m-%d")
-                        firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'Accounts',[{"Name": name, "Ammount": ammount, "Type": typ, "Date": date}])
+                        date = today.strftime("%Y_%m_%d")
+                        firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7],[{"Name": name, "Ammount": ammount, "Type": typ, "Date": date}])
                         firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
                         firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
                         firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',False)
@@ -655,7 +682,14 @@ def linebot():
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',True)
                     reply_message('請輸入項目名稱', tk, access_token)
                 elif text == "月帳":
-                    pass
+                    sum = account_monthly(client, ID)
+                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他"],sum)
+                    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
+                    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
+                    image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
+                    content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:13","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(sum[0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}]},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(sum[1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}]},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(sum[2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}]},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(sum[3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}]},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(sum[4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}]},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(sum[5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}]},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(sum[6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}]}]}}]}
+                    reply_flex_message(text, content, tk, access_token)
+                    reply_image(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png', tk, access_token)
                 else:
                     pass
         if type=='audio':
