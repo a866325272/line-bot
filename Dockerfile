@@ -21,7 +21,8 @@ ENV LOG_PATH ${LOG_PATH}
 
 RUN pip3 install -r requirements.txt
 RUN apt-get update && apt-get install -y fonts-wqy-zenhei
-RUN echo "font.sans-serif: SimSun" >> ~/.config/matplotlib/matplotlibrc
+RUN touch /root/.config/matplotlib/matplotlibrc
+RUN echo "font.sans-serif: SimSun" >> /root/.config/matplotlib/matplotlibrc
 COPY app.py app.py
 COPY firestore.py firestore.py
 COPY gcs.py gcs.py
