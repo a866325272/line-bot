@@ -40,12 +40,12 @@ def account_monthly(client, ID):
     today = datetime.now(tz)
     date = today.strftime("%Y_%m_%d")
     accounts = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7])
-    sum = [0,0,0,0,0,0,0]
+    summation = [0,0,0,0,0,0,0]
     for account in accounts:
         for i in range(7):
             if account['Type'] == i+1:
-                sum[i] += account['Ammount']
-    return sum
+                summation[i] += account['Ammount']
+    return summation
 
 # 生成圓餅圖
 def pie_chart(index: list, value: list, title: str):
@@ -691,12 +691,12 @@ def linebot():
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',True)
                     reply_message('請輸入項目名稱', tk, access_token)
                 elif text == "月帳":
-                    sum = account_monthly(client, ID)
-                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他"],sum,"本月統計")
+                    summation = account_monthly(client, ID)
+                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他"],summation,"本月統計")
                     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
                     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
                     image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
-                    content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"本月統計","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"text","text":"飲食:"+str(sum[0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(sum[1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(sum[2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(sum[3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(sum[4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(sum[5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(sum[6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"}]}}]}
+                    content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"本月統計:"+str(sum(summation))+"元","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"text","text":"飲食:"+str(summation[0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(summation[1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(summation[2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(summation[3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(summation[4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(summation[5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(summation[6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"}]}}]}
                     reply_flex_message(text, content, tk, access_token)
                 else:
                     pass
