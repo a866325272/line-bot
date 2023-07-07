@@ -135,7 +135,7 @@ def chatmode(input: str,client: str,ID: str) -> str:
     messages = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'messages')
     logger.info(messages)
     chat = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo-0613", messages=messages
+        model="gpt-4", messages=messages
     )
     reply = chat.choices[0].message.content
     firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "assistant", "content": reply}])
@@ -641,7 +641,7 @@ def linebot():
                     openai_image_url = dalle(text[2:])
                     reply_image(openai_image_url, tk, access_token)
                 elif text[0:2] == '聊，' or text[0:2] == '聊,':
-                    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo-0613", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文回覆)"}])
+                    completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文回覆)"}])
                     reply_msg = completion.choices[0].message.content
                     reply_message(reply_msg, tk, access_token)
                 elif text == '扛' or text == '坦':
@@ -659,7 +659,7 @@ def linebot():
                     reply_msg = f'氣象指令說明\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送雷達回波圖\n衛星雲圖 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報'
                     reply_message(reply_msg , tk, access_token)
                 elif text == '!記帳' or text == '！記帳':
-                    reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目'
+                    reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目\n月帳 - 當月統計'
                     reply_message(reply_msg , tk, access_token)
                 elif text == '!新聞' or text == '！新聞':
                     reply_msg = f'新聞指令說明\n焦點新聞 - 三則焦點新聞\n國際新聞 - 三則國際新聞\n商業新聞 - 三則商業新聞\n科技新聞 - 三則科技新聞\n體育新聞 - 三則體育新聞\n娛樂新聞 - 三則娛樂新聞'
@@ -701,7 +701,7 @@ def linebot():
                 else:
                     pass
         if type=='audio':
-            completion = openai.ChatCompletion.create(model="gpt-3.5-turbo-0613", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
+            completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
             msg = completion.choices[0].message.content
             push_message(msg, ID, access_token)
             text_to_speech("cmn-TW-Wavenet-C",msg)
