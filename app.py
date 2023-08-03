@@ -35,10 +35,10 @@ logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
 
 # 月帳統計
-def account_monthly(client, ID):
-    tz = timezone(timedelta(hours=+8))
-    today = datetime.now(tz)
-    date = today.strftime("%Y_%m_%d")
+def account_monthly(client, ID, date):
+    #tz = timezone(timedelta(hours=+8))
+    #today = datetime.now(tz)
+    #date = today.strftime("%Y_%m_%d")
     accounts = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7])
     cost_summation = [0,0,0,0,0,0,0]
     income_summation = 0
@@ -356,21 +356,21 @@ def forecast(address):
                 endtime1 = endtime1[:11] + "12時"
             wd1 = i['weatherElement'][0]['time'][1]['elementValue'][0]['value']  # 綜合描述
             #starttime2 = i['weatherElement'][0]['time'][2]['startTime']
-            endtime2 = i['weatherElement'][0]['time'][2]['endTime']
-            if endtime2[11] == '0' and endtime2[12] == '6':
-                endtime2 = endtime2[:11] + "0時"
-            if endtime2[11] == '1' and endtime2[12] == '8':
-                endtime2 = endtime2[:11] + "12時"
-            wd2 = i['weatherElement'][0]['time'][2]['elementValue'][0]['value']  # 綜合描述
+            #endtime2 = i['weatherElement'][0]['time'][2]['endTime']
+            #if endtime2[11] == '0' and endtime2[12] == '6':
+            #    endtime2 = endtime2[:11] + "0時"
+            #if endtime2[11] == '1' and endtime2[12] == '8':
+            #    endtime2 = endtime2[:11] + "12時"
+            #wd2 = i['weatherElement'][0]['time'][2]['elementValue'][0]['value']  # 綜合描述
             #starttime3 = i['weatherElement'][0]['time'][3]['startTime']
-            endtime3 = i['weatherElement'][0]['time'][3]['endTime']
-            if endtime3[11] == '0' and endtime3[12] == '6':
-                endtime3 = endtime3[:11] + "0時"
-            if endtime3[11] == '1' and endtime3[12] == '8':
-                endtime3 = endtime3[:11] + "12時"
-            wd3 = i['weatherElement'][0]['time'][3]['elementValue'][0]['value']  # 綜合描述
+            #endtime3 = i['weatherElement'][0]['time'][3]['endTime']
+            #if endtime3[11] == '0' and endtime3[12] == '6':
+            #    endtime3 = endtime3[:11] + "0時"
+            #if endtime3[11] == '1' and endtime3[12] == '8':
+            #    endtime3 = endtime3[:11] + "12時"
+            #wd3 = i['weatherElement'][0]['time'][3]['elementValue'][0]['value']  # 綜合描述
             if area in address:           # 如果使用者的地址包含鄉鎮區域名稱
-                msg = city+area+f'天氣預報 :\n{endtime}\n{wd}\n\n{endtime1}\n{wd1}\n\n{endtime2}\n{wd2}\n\n{endtime3}\n{wd3}' # 將 msg 換成對應的預報資訊
+                msg = city+area+f'天氣預報 :\n{endtime}\n{wd}\n\n{endtime1}\n{wd1}' # 將 msg 換成對應的預報資訊
                 break
         return msg  # 回傳 msg
     except:
@@ -631,8 +631,26 @@ def linebot():
                         firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName',text)
                         firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount',True)
                         reply_message("請輸入金額", tk, access_token)
+            elif firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsHistory'):
+                    try:
+                        if len(text) != 6:
+                            raise
+                        if int(text[:4]) < 1900 or int(text[:4]) > 2399:
+                            raise
+                        if int(text[4:]) < 1 or int(text[4:]) > 12:
+                            raise
+                    except:
+                        reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
+                    summation = account_monthly(client, ID, text[:4]+"_"+text[4:])
+                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他"],summation[0],text[:4]+"年"+text[4:]+"月統計")
+                    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
+                    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
+                    image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
+                    content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"支出總計:"+str(sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg","color": "#FF0000"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(summation[0][0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(summation[0][1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(summation[0][2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(summation[0][3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(summation[0][4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(summation[0][5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(summation[0][6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收入總計:"+str(summation[1])+"元","wrap":True,"weight":"bold","size":"lg","color": "#00FF00"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收支損益:"+str(summation[1]-sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg"}],"alignItems":"center"}]}}]}
+                    firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsHistory',False)
+                    reply_flex_message(text, content, tk, access_token)
             else:
-                if text == '雷達回波圖' or text == '雷達回波':
+                if text == '雷達' or text == '雷達回波':
                     reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-001.png?{time.time_ns()}', tk, access_token)
                 elif text == '衛星雲圖':
                     reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
@@ -661,10 +679,10 @@ def linebot():
                 #elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
                 #    reply_message(get_cryptocurrency_market(), tk, access_token)
                 elif text == '!氣象' or text == '！氣象':
-                    reply_msg = f'氣象指令說明\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送雷達回波圖\n衛星雲圖 - 傳送衛星雲圖\n發送位置 - 回報天氣資訊和預報'
+                    reply_msg = f'氣象指令說明\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送雷達回波圖\n衛星雲圖 - 傳送衛星雲圖\n颱風 - 傳送東亞衛星雲圖\n發送位置 - 回報天氣資訊和預報'
                     reply_message(reply_msg , tk, access_token)
                 elif text == '!記帳' or text == '！記帳':
-                    reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目\n月帳 - 當月統計'
+                    reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目\n月帳 - 當月統計\n歷史 - 歷史月帳'
                     reply_message(reply_msg , tk, access_token)
                 elif text == '!新聞' or text == '！新聞':
                     reply_msg = f'新聞指令說明\n焦點新聞 - 三則焦點新聞\n國際新聞 - 三則國際新聞\n商業新聞 - 三則商業新聞\n科技新聞 - 三則科技新聞\n體育新聞 - 三則體育新聞\n娛樂新聞 - 三則娛樂新聞'
@@ -696,13 +714,16 @@ def linebot():
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',True)
                     reply_message('請輸入項目名稱', tk, access_token)
                 elif text == "月帳":
-                    summation = account_monthly(client, ID)
+                    summation = account_monthly(client, ID, datetime.now(timezone(timedelta(hours=+8))).strftime("%Y_%m_%d"))
                     percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他"],summation[0],"本月統計")
                     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
                     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
                     image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
                     content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"支出總計:"+str(sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg","color": "#FF0000"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(summation[0][0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(summation[0][1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(summation[0][2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(summation[0][3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(summation[0][4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(summation[0][5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(summation[0][6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收入總計:"+str(summation[1])+"元","wrap":True,"weight":"bold","size":"lg","color": "#00FF00"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收支損益:"+str(summation[1]-sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg"}],"alignItems":"center"}]}}]}
                     reply_flex_message(text, content, tk, access_token)
+                elif text == "歷史":
+                    firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsHistory',True)
+                    reply_message('請輸入年月\nex.202307', tk, access_token)
                 else:
                     pass
         if type=='audio':
@@ -717,8 +738,8 @@ def linebot():
             logger.info('sticker')
         if type=='video':
             logger.info('video')
-    except:
-        logger.warning('exception')                             # 如果發生錯誤，印出error
+    except Exception as e:
+        logger.warning('exception'+e)                             # 如果發生錯誤，印出error
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
 
 if __name__ == "__main__":
