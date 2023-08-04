@@ -40,10 +40,10 @@ def account_monthly(client, ID, date):
     #today = datetime.now(tz)
     #date = today.strftime("%Y_%m_%d")
     accounts = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7])
-    cost_summation = [0,0,0,0,0,0,0]
+    cost_summation = [0,0,0,0,0,0,0,0]
     income_summation = 0
     for account in accounts:
-        for i in range(7):
+        for i in range(8):
             if account['Type'] == i+1:
                 cost_summation[i] += account['Ammount']
         if account['Type'] == 11:
@@ -55,7 +55,7 @@ def pie_chart(index: list, value: list, title: str):
     # Filter out 0% values
     non_zero_data = [d for d in value if d != 0]
     non_zero_labels = [l for d, l in zip(value, index) if d != 0]
-    res = ['0.0%','0.0%','0.0%','0.0%','0.0%','0.0%','0.0%']
+    res = ['0.0%','0.0%','0.0%','0.0%','0.0%','0.0%','0.0%','0.0%']
     # Creating plot
     fig = plt.figure(figsize =(10, 7))
     patches, labels, percentages = plt.pie(non_zero_data, labels = non_zero_labels, autopct='%1.1f%%', textprops={'fontsize': 24})
@@ -602,7 +602,7 @@ def linebot():
                 if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType'):
                     try:
                         typ = int(text)
-                        if typ not in [1,2,3,4,5,6,7,11]:
+                        if typ not in [1,2,3,4,5,6,7,8,11]:
                             raise
                         ammount = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
                         name = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
@@ -617,14 +617,14 @@ def linebot():
                         firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',False)
                         reply_message(f'項目名稱:{name} 金額:{ammount} 類別:{typ} 輸入成功', tk, access_token)
                     except:
-                        reply_message("格式錯誤，請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 11收入", tk, access_token)
+                        reply_message("格式錯誤，請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
                 else:
                     if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount'):
                         try:
                             ammount = float(text)
                             firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount',ammount)
                             firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',True)
-                            reply_message("請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 11收入", tk, access_token)
+                            reply_message("請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
                         except:
                             reply_message("格式錯誤，請輸入金額數字", tk, access_token)
                     else:
@@ -642,11 +642,11 @@ def linebot():
                     except:
                         reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
                     summation = account_monthly(client, ID, text[:4]+"_"+text[4:])
-                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他"],summation[0],text[:4]+"年"+text[4:]+"月統計")
+                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他","投資"],summation[0],text[:4]+"年"+text[4:]+"月統計")
                     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
                     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
                     image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
-                    content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"支出總計:"+str(sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg","color": "#FF0000"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(summation[0][0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(summation[0][1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(summation[0][2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(summation[0][3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(summation[0][4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(summation[0][5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(summation[0][6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收入總計:"+str(summation[1])+"元","wrap":True,"weight":"bold","size":"lg","color": "#00FF00"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收支損益:"+str(summation[1]-sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg"}],"alignItems":"center"}]}}]}
+                    content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"支出總計:"+str(sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg","color": "#FF0000"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(summation[0][0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(summation[0][1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(summation[0][2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(summation[0][3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(summation[0][4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(summation[0][5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(summation[0][6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"投資:"+str(summation[0][7])+"元("+percentages[7]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收入總計:"+str(summation[1])+"元","wrap":True,"weight":"bold","size":"lg","color": "#00FF00"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收支損益:"+str(summation[1]-sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg"}],"alignItems":"center"}]}}]}
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsHistory',False)
                     reply_flex_message(text, content, tk, access_token)
             else:
@@ -715,7 +715,7 @@ def linebot():
                     reply_message('請輸入項目名稱', tk, access_token)
                 elif text == "月帳":
                     summation = account_monthly(client, ID, datetime.now(timezone(timedelta(hours=+8))).strftime("%Y_%m_%d"))
-                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他"],summation[0],"本月統計")
+                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他","投資"],summation[0],"本月統計")
                     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
                     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
                     image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
