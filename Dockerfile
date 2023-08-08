@@ -25,5 +25,6 @@ RUN rm -rf /root/.cache/matplotlib/*
 COPY app.py app.py
 COPY firestore.py firestore.py
 COPY gcs.py gcs.py
+COPY gss.py gss.py
 CMD ["python3", "app.py"]
 #CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
