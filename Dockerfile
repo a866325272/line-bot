@@ -27,4 +27,5 @@ COPY firestore.py firestore.py
 COPY gcs.py gcs.py
 COPY gss.py gss.py
 CMD ["python3", "app.py"]
+EXPOSE 5000
 #CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
