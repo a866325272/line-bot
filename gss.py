@@ -12,24 +12,36 @@ def insert_cell_to_google_sheet(spreadsheet_id, worksheet_name, row, col, value)
     # Update the specific cell with the value
     worksheet.update_cell(row, col, value)
 
-def create_and_insert_sheet(spreadsheet_id, worksheet_name, data):
+def create_worksheet(spreadsheet_id, worksheet_name):
     gc = gspread.service_account(GAC)
 
-    # Create a new spreadsheet
+    # Open a spreadsheet
     sh = gc.open_by_key(spreadsheet_id)
 
     # Add a worksheet
-    worksheet = sh.add_worksheet(title=worksheet_name, rows=len(data)+1, cols=len(data[0]))
+    worksheet = sh.add_worksheet(title=worksheet_name, rows=1, cols=10)
 
-    # Insert headers
-    headers = list(data[0].keys())
-    worksheet.append_row(headers)
+def append_data(spreadsheet_id, worksheet_name, data):
+    gc = gspread.service_account(GAC)
 
-    # Insert values
-    values =[]
-    for item in data:
-        values.append(list(item.values()))
-    worksheet.append_rows(values)
+    # Open the Google Sheet
+    sh = gc.open_by_key(spreadsheet_id)
 
-    return worksheet.url    
+    # Select the worksheet
+    worksheet = sh.worksheet(worksheet_name)
+    worksheet.append_rows(data)
 
+    return worksheet.url
+
+def update_table(spreadsheet_id, worksheet_name, table_data, starting_cell):
+    gc = gspread.service_account(GAC)
+
+    # Open the Google Sheet
+    sh = gc.open_by_key(spreadsheet_id)
+
+    # Select the worksheet
+    worksheet = sh.worksheet(worksheet_name)
+
+    worksheet.update(starting_cell, table_data, raw=False)
+
+    return worksheet.url

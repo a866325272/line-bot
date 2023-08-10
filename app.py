@@ -661,7 +661,34 @@ def linebot():
                     except:
                         reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
                     data = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+text[:4]+"_"+text[4:])
-                    r = gss.create_and_insert_sheet('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],data)
+                    headers = list(data[0].keys())
+                    values =[]
+                    for item in data:
+                        values.append(list(item.values()))
+                    gss.create_worksheet('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
+                    gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],[headers])
+                    gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],values)
+                    if int(text[4:]) == 1:
+                        old_table = str(int(text[:4])-1)+"_12"
+                    elif int(text[4:]) in [11,12]:
+                        text[:4]+"_"+str(int(text[4:])-1)
+                    else:
+                        old_table = text[:4]+"_0"+str(int(text[4:])-1)
+                    update_table = [["","Type","Ammount","percetage","MoM"],
+                    ["1","飲食",'=SUMIF($A$2:$A,"=1",$B$2:$B)',"=G2/$G$13",f'=G2-{old_table}!G2'],
+                    ["2","生活",'=SUMIF($A$2:$A,"=2",$B$2:$B)',"=G3/$G$13",f'=G3-{old_table}!G3'],
+                    ["3","居住",'=SUMIF($A$2:$A,"=3",$B$2:$B)',"=G4/$G$13",f'=G4-{old_table}!G4'],
+                    ["4","交通",'=SUMIF($A$2:$A,"=4",$B$2:$B)',"=G5/$G$13",f'=G5-{old_table}!G5'],
+                    ["5","娛樂",'=SUMIF($A$2:$A,"=5",$B$2:$B)',"=G6/$G$13",f'=G6-{old_table}!G6'],
+                    ["6","醫療",'=SUMIF($A$2:$A,"=6",$B$2:$B)',"=G7/$G$13",f'=G7-{old_table}!G7'],
+                    ["7","其他",'=SUMIF($A$2:$A,"=7",$B$2:$B)',"=G8/$G$13",f'=G8-{old_table}!G8'],
+                    ["8","投資",'=SUMIF($A$2:$A,"=8",$B$2:$B)',"=G9/$G$13",f'=G9-{old_table}!G9'],
+                    ["","","","",""],
+                    ["","","","",""],
+                    ["11","收入",'=SUMIF($A$2:$A,"=11",$B$2:$B)',"",f'=G12-{old_table}!G12'],
+                    ["","支出","=SUM(G2:G9)","",""],
+                    ["","損益","=G12-SUM(G2:G9)","",""]]
+                    r = gss.update_table('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],update_table,"E1")
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsReport',False)
                     reply_message("明細已匯出，前往:"+r, tk, access_token)
             else:
