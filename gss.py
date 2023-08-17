@@ -21,6 +21,21 @@ def create_worksheet(spreadsheet_id, worksheet_name):
     # Add a worksheet
     worksheet = sh.add_worksheet(title=worksheet_name, rows=1, cols=10)
 
+def delete_worksheet_if_exist(spreadsheet_id, worksheet_name):
+    gc = gspread.service_account(GAC)
+
+    # Open a spreadsheet
+    sh = gc.open_by_key(spreadsheet_id)
+
+    try:
+        worksheet = sh.worksheet(worksheet_name)
+    except:
+        return "Worksheet is not exist."
+    
+    # Delete the worksheet
+    sh.del_worksheet(worksheet)
+    return "Worksheet deleted successfully."
+
 def append_data(spreadsheet_id, worksheet_name, data):
     gc = gspread.service_account(GAC)
 

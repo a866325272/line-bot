@@ -665,6 +665,7 @@ def linebot():
                     values =[]
                     for item in data:
                         values.append(list(item.values()))
+                    gss.delete_worksheet_if_exist('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
                     gss.create_worksheet('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
                     gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],[headers])
                     gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],values)
@@ -686,7 +687,7 @@ def linebot():
                     ["","","","",""],
                     ["","","","",""],
                     ["11","收入",'=SUMIF($A$2:$A,"=11",$B$2:$B)',"",f'=G12-{old_table}!G12'],
-                    ["","支出","=SUM(G2:G9)","",""],
+                    ["","支出","=SUM(G2:G9)","",f'=G13-{old_table}!G13'],
                     ["","損益","=G12-SUM(G2:G9)","",""]]
                     r = gss.update_table('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],update_table,"E1")
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsReport',False)
