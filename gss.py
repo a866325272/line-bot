@@ -60,3 +60,18 @@ def update_table(spreadsheet_id, worksheet_name, table_data, starting_cell):
     worksheet.update(starting_cell, table_data, raw=False)
 
     return worksheet.url
+
+def set_format_percent(spreadsheet_id, worksheet_name, cell_range):
+    gc = gspread.service_account(GAC)
+
+    # Open the Google Sheet
+    sh = gc.open_by_key(spreadsheet_id)
+
+    # Select the worksheet
+    worksheet = sh.worksheet(worksheet_name)
+
+    try:
+        worksheet.format(cell_range,{"numberFormat": { "type": "PERCENT", "pattern": "0.00%"}})
+        print(f"Cell range {cell_range} format set to: ")
+    except:
+        print("An error occurred:")

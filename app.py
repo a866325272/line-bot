@@ -690,6 +690,7 @@ def linebot():
                     ["","支出","=SUM(G2:G9)","",f'=G13-{old_table}!G13'],
                     ["","損益","=G12-SUM(G2:G9)","",""]]
                     r = gss.update_table('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],update_table,"E1")
+                    gss.set_format_percent('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],'H2:H9')
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsReport',False)
                     reply_message("明細已匯出，前往:"+r, tk, access_token)
             else:
