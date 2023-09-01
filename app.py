@@ -395,7 +395,7 @@ def typhoon():
     file_name = os.listdir("videos/")[0]
     file_path = "videos/" + file_name
     video_clip = VideoFileClip(file_path)
-    video_clip = video_clip.set_fps(10)
+    video_clip = video_clip.set_fps(5)
     video_clip.write_videofile('typhoon.mp4', codec='libx264')
     video_clip.close()
 
