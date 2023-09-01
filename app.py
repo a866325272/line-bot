@@ -9,6 +9,8 @@ from logging.handlers import TimedRotatingFileHandler
 from dotenv import load_dotenv
 from datetime import timezone, timedelta, datetime
 from matplotlib import pyplot as plt
+from playwright.sync_api import sync_playwright
+from moviepy.editor import VideoFileClip
 import google.cloud.texttospeech as tts
 import datetime as dt
 import requests, json, time, statistics, numpy, os, openai, random, logging
@@ -377,6 +379,30 @@ def forecast(address):
     except:
         return msg  # 如果取資料有發生錯誤，直接回傳 msg
 
+# 颱風預測函式
+def typhoon():
+    # 擷取颱風路徑錄影
+    with sync_playwright() as playwright:
+        browser = playwright.webkit.launch()
+        context = browser.new_context(record_video_dir="videos",record_video_size={"width": 640, "height": 360})
+        page = context.new_page()
+        page.goto('https://watch.ncdr.nat.gov.tw/watch_tracks_pro')
+        page.screenshot(path=f'typhoon.png')
+        page.wait_for_timeout(30000)
+        context.close()
+
+    # 轉換成.mp4
+    file_name = os.listdir("videos/")[0]
+    file_path = "videos/" + file_name
+    video_clip = VideoFileClip(file_path)
+    video_clip = video_clip.set_fps(10)
+    video_clip.write_videofile('typhoon.mp4', codec='libx264')
+    video_clip.close()
+
+    # 刪除錄影檔
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
 # 目前天氣函式
 def current_weather(address):
     city_list, city_list2, area_list, area_list2 = {}, {}, {}, {} # 定義好待會要用的變數
@@ -504,6 +530,20 @@ def reply_image(msg, rk, token):
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
     logger.info("reply_img:"+msg)
+
+# LINE 回傳影片函式
+def reply_video(preview, video, rk, token):
+    headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
+    body = {
+    'replyToken':rk,
+    'messages':[{
+          'type': 'video',
+          'originalContentUrl': video,
+          'previewImageUrl': preview
+        }]
+    }
+    req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
+    logger.info("reply_img:"+video)
 
 # LINE 回傳語音函式
 def reply_audio(msg, rk, token):
@@ -699,7 +739,13 @@ def linebot():
                 elif text == '衛星雲圖':
                     reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
                 elif text == '颱風':
-                    reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-B0032-002.jpg?{time.time_ns()}', tk, access_token)
+                    push_message("颱風資訊擷取中，請稍候...", ID, access_token)
+                    typhoon()
+                    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./typhoon.mp4", f'typhoon/typhoon{tk}.mp4')
+                    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./typhoon.png", f'typhoon/typhoon{tk}.png')
+                    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.mp4')
+                    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.png')
+                    reply_video(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png', f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4', tk, access_token)
                 elif text == '地震資訊' or text == '地震':
                     quake = earth_quake()                           # 爬取地震資訊
                     push_message(quake[0], ID, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
@@ -785,6 +831,8 @@ def linebot():
             logger.info('sticker')
         if type=='video':
             logger.info('video')
+        if type=='image':
+            logger.info('image')
     except Exception as e:
         logger.warning('exception'+e)                             # 如果發生錯誤，印出error
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
