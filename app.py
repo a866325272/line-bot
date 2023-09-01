@@ -111,7 +111,7 @@ def news(cat: str):
     soup = BeautifulSoup(web.text, "html.parser")
     tags = soup.select(".IBr9hb a")
     links = []
-    for i in range(3):
+    for i in range(5):
         url = "https://news.google.com/"+tags[i]['href'][2::]
         web = requests.get(url, allow_redirects=False)
         links.append(web.headers['Location'])
@@ -130,7 +130,7 @@ def news(cat: str):
         title_end = req.text.find("</title>", title_start)
         title = req.text[title_start + 7:title_end].strip()
         titles.append(title)
-    content = {"type":"carousel","contents":[{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[0]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[0]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[1]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":links[1]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[2]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[2]},"height": "sm"}]}}]}
+    content = {"type":"carousel","contents":[{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[0]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[0]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[1]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":links[1]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[2]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[2]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[3]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[3]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[4]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[4]},"height": "sm"}]}}]}
     return content
 
 # 對話模式
