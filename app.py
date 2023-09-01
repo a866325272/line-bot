@@ -769,7 +769,7 @@ def linebot():
                 #elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
                 #    reply_message(get_cryptocurrency_market(), tk, access_token)
                 elif text == '!氣象' or text == '！氣象':
-                    reply_msg = f'氣象指令說明\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送雷達回波圖\n衛星雲圖 - 傳送衛星雲圖\n颱風 - 傳送東亞衛星雲圖\n發送位置 - 回報天氣資訊和預報'
+                    reply_msg = f'氣象指令說明\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送雷達回波圖\n衛星雲圖 - 傳送衛星雲圖\n颱風 - 動態颱風路徑預測\n發送位置 - 回報天氣資訊和預報'
                     reply_message(reply_msg , tk, access_token)
                 elif text == '!記帳' or text == '！記帳':
                     reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目\n月帳 - 當月統計\n歷史 - 歷史月帳'
