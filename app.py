@@ -735,9 +735,11 @@ def linebot():
                     reply_message("明細已匯出，前往:"+r, tk, access_token)
             else:
                 if text == '雷達' or text == '雷達回波':
-                    reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-001.png?{time.time_ns()}', tk, access_token)
+                    reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-001.png', tk, access_token)
+                    #reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-A0058-001.png?{time.time_ns()}', tk, access_token)
                 elif text == '衛星雲圖':
-                    reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
+                    reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-C0042-002.jpg', tk, access_token)
+                    #reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/MSC/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
                 elif text == '颱風':
                     push_message("颱風資訊擷取中，請稍候...", ID, access_token)
                     typhoon()
