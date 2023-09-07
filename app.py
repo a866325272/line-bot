@@ -834,7 +834,7 @@ def linebot():
         if type=='image':
             logger.info('image')
     except Exception as e:
-        logger.warning('exception'+e)                             # 如果發生錯誤，印出error
+        logger.warning('exception:'+str(e))                     # 如果發生錯誤，印出error
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
 
 if __name__ == "__main__":
