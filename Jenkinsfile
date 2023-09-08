@@ -45,7 +45,7 @@ pipeline {
                 sh "ssh -i ${SSH_KEY} jeff@${DEPLOY_DEST} /usr/local/bin/docker-compose -f ${DOCKER_COMPOSE_FILE} up -d"
             }
         }
-        stage("Get Service URL") {
+        /*stage("Get Service URL") {
             steps {
                 script {
                     final String url = "${DEPLOY_DEST}:4040/api/tunnels"
@@ -53,6 +53,6 @@ pipeline {
                     echo response
                 }
             }
-        }
+        }*/
     }
 }
