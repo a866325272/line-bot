@@ -37,11 +37,42 @@ console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
 
+# 月帳明細
+def account_detail(text, data):
+    headers = list(data[0].keys())
+    values =[]
+    for item in data:
+        values.append(list(item.values()))
+    gss.delete_worksheet_if_exist('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
+    gss.create_worksheet('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
+    gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],[headers])
+    gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],values)
+    if int(text[4:]) == 1:
+        old_table = str(int(text[:4])-1)+"_12"
+    elif int(text[4:]) in [11,12]:
+        text[:4]+"_"+str(int(text[4:])-1)
+    else:
+        old_table = text[:4]+"_0"+str(int(text[4:])-1)
+    update_table = [["","Type","Ammount","percetage","MoM"],
+    ["1","飲食",'=SUMIF($A$2:$A,"=1",$B$2:$B)',"=G2/$G$13",f'=G2-{old_table}!G2'],
+    ["2","生活",'=SUMIF($A$2:$A,"=2",$B$2:$B)',"=G3/$G$13",f'=G3-{old_table}!G3'],
+    ["3","居住",'=SUMIF($A$2:$A,"=3",$B$2:$B)',"=G4/$G$13",f'=G4-{old_table}!G4'],
+    ["4","交通",'=SUMIF($A$2:$A,"=4",$B$2:$B)',"=G5/$G$13",f'=G5-{old_table}!G5'],
+    ["5","娛樂",'=SUMIF($A$2:$A,"=5",$B$2:$B)',"=G6/$G$13",f'=G6-{old_table}!G6'],
+    ["6","醫療",'=SUMIF($A$2:$A,"=6",$B$2:$B)',"=G7/$G$13",f'=G7-{old_table}!G7'],
+    ["7","其他",'=SUMIF($A$2:$A,"=7",$B$2:$B)',"=G8/$G$13",f'=G8-{old_table}!G8'],
+    ["8","投資",'=SUMIF($A$2:$A,"=8",$B$2:$B)',"=G9/$G$13",f'=G9-{old_table}!G9'],
+    ["","","","",""],
+    ["","","","",""],
+    ["11","收入",'=SUMIF($A$2:$A,"=11",$B$2:$B)',"",f'=G12-{old_table}!G12'],
+    ["","支出","=SUM(G2:G9)","",f'=G13-{old_table}!G13'],
+    ["","損益","=G12-SUM(G2:G9)","",""]]
+    sheet_url = gss.update_table('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],update_table,"E1")
+    gss.set_format_percent('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],'H2:H9')
+    return sheet_url
+
 # 月帳統計
 def account_monthly(client, ID, date):
-    #tz = timezone(timedelta(hours=+8))
-    #today = datetime.now(tz)
-    #date = today.strftime("%Y_%m_%d")
     accounts = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7])
     cost_summation = [0,0,0,0,0,0,0,0]
     income_summation = 0
@@ -257,6 +288,7 @@ def get_meme():
     img = choice(url)
     return img"""
 
+# 取得食物圖函式
 def get_food():
     url = 'https://jeff-dev.tplinkdns.com/food/'
     web = requests.get(url)
@@ -412,6 +444,11 @@ def typhoon():
     # 刪除錄影檔
     if os.path.exists(file_path):
         os.remove(file_path)
+
+    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./typhoon.mp4", f'typhoon/typhoon{tk}.mp4')
+    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./typhoon.png", f'typhoon/typhoon{tk}.png')
+    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.mp4')
+    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.png')
 
 # 目前天氣函式
 def current_weather(address):
@@ -657,9 +694,7 @@ def linebot():
                             raise
                         ammount = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
                         name = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
-                        tz = timezone(timedelta(hours=+8))
-                        today = datetime.now(tz)
-                        date = today.strftime("%Y_%m_%d")
+                        date = datetime.now(timezone(timedelta(hours=+8))).strftime("%Y_%m_%d")
                         firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7],[{"Name": name, "Ammount": ammount, "Type": typ, "Date": date}])
                         firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
                         firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
@@ -711,38 +746,9 @@ def linebot():
                     except:
                         reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
                     data = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+text[:4]+"_"+text[4:])
-                    headers = list(data[0].keys())
-                    values =[]
-                    for item in data:
-                        values.append(list(item.values()))
-                    gss.delete_worksheet_if_exist('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
-                    gss.create_worksheet('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
-                    gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],[headers])
-                    gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],values)
-                    if int(text[4:]) == 1:
-                        old_table = str(int(text[:4])-1)+"_12"
-                    elif int(text[4:]) in [11,12]:
-                        text[:4]+"_"+str(int(text[4:])-1)
-                    else:
-                        old_table = text[:4]+"_0"+str(int(text[4:])-1)
-                    update_table = [["","Type","Ammount","percetage","MoM"],
-                    ["1","飲食",'=SUMIF($A$2:$A,"=1",$B$2:$B)',"=G2/$G$13",f'=G2-{old_table}!G2'],
-                    ["2","生活",'=SUMIF($A$2:$A,"=2",$B$2:$B)',"=G3/$G$13",f'=G3-{old_table}!G3'],
-                    ["3","居住",'=SUMIF($A$2:$A,"=3",$B$2:$B)',"=G4/$G$13",f'=G4-{old_table}!G4'],
-                    ["4","交通",'=SUMIF($A$2:$A,"=4",$B$2:$B)',"=G5/$G$13",f'=G5-{old_table}!G5'],
-                    ["5","娛樂",'=SUMIF($A$2:$A,"=5",$B$2:$B)',"=G6/$G$13",f'=G6-{old_table}!G6'],
-                    ["6","醫療",'=SUMIF($A$2:$A,"=6",$B$2:$B)',"=G7/$G$13",f'=G7-{old_table}!G7'],
-                    ["7","其他",'=SUMIF($A$2:$A,"=7",$B$2:$B)',"=G8/$G$13",f'=G8-{old_table}!G8'],
-                    ["8","投資",'=SUMIF($A$2:$A,"=8",$B$2:$B)',"=G9/$G$13",f'=G9-{old_table}!G9'],
-                    ["","","","",""],
-                    ["","","","",""],
-                    ["11","收入",'=SUMIF($A$2:$A,"=11",$B$2:$B)',"",f'=G12-{old_table}!G12'],
-                    ["","支出","=SUM(G2:G9)","",f'=G13-{old_table}!G13'],
-                    ["","損益","=G12-SUM(G2:G9)","",""]]
-                    r = gss.update_table('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],update_table,"E1")
-                    gss.set_format_percent('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],'H2:H9')
+                    sheet_url = account_detail(text, data)
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsReport',False)
-                    reply_message("明細已匯出，前往:"+r, tk, access_token)
+                    reply_message("明細已匯出，前往:"+sheet_url, tk, access_token)
             else:
                 if text == '雷達' or text == '雷達回波':
                     reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-001.png?{time.time_ns()}', tk, access_token)
@@ -751,10 +757,6 @@ def linebot():
                 elif text == '颱風':
                     push_message("颱風資訊擷取中，請稍候...", ID, access_token)
                     typhoon()
-                    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./typhoon.mp4", f'typhoon/typhoon{tk}.mp4')
-                    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./typhoon.png", f'typhoon/typhoon{tk}.png')
-                    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.mp4')
-                    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.png')
                     reply_video(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png', f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4', tk, access_token)
                 elif text == '地震資訊' or text == '地震':
                     quake = earth_quake()                           # 爬取地震資訊
