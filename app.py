@@ -257,6 +257,16 @@ def get_meme():
     img = choice(url)
     return img"""
 
+def get_food():
+    url = 'https://jeff-dev.tplinkdns.com/food/'
+    web = requests.get(url)
+    soup = BeautifulSoup(web.text, "html.parser")
+    links = soup.find('pre').find_all('a')
+    link_values = [link.get('href') for link in links]
+    random_link = random.choice(link_values)
+    print(random_link)
+    return url+random_link
+
 # OpenAI製圖函式
 def dalle(msg):
     headers = {'Authorization':f'Bearer {openai_token}','Content-Type':'application/json'}
@@ -763,6 +773,8 @@ def linebot():
                     reply_image(get_beauty(), tk, access_token)
                 elif text in ('牡羊','金牛','雙子','巨蟹','獅子','處女','天秤','天蠍','射手','魔羯','水瓶','雙魚'):
                     reply_message(get_luck(text), tk, access_token)
+                elif text in ("午餐","晚餐","肚子餓","吃甚麼"):
+                    reply_image(get_food(), tk, access_token)
                 elif text == '!help' or text == '！help':
                     reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n聊， - ChatGPT陪你聊天\n畫， - DALL-E合成圖片\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音翻譯機翻成繁體中文\n加密貨幣:<交易對id> - 顯示價格\n!氣象 - 氣象指令說明\n!新聞 - 新聞指令說明\n!對話模式 - 對話模式指令說明'
                     reply_message(reply_msg , tk, access_token)
