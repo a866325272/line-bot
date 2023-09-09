@@ -422,7 +422,7 @@ def forecast(address):
         return msg  # 如果取資料有發生錯誤，直接回傳 msg
 
 # 颱風預測函式
-def typhoon():
+def typhoon(tk):
     # 擷取颱風路徑錄影
     with sync_playwright() as playwright:
         browser = playwright.webkit.launch()
@@ -756,7 +756,7 @@ def linebot():
                     reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
                 elif text == '颱風':
                     push_message("颱風資訊擷取中，請稍候...", ID, access_token)
-                    typhoon()
+                    typhoon(tk)
                     reply_video(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png', f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4', tk, access_token)
                 elif text == '地震資訊' or text == '地震':
                     quake = earth_quake()                           # 爬取地震資訊
