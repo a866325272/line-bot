@@ -14,7 +14,7 @@ steps:
       - '--build-arg'
       - 'EPA_TOKEN=$_EPA_TOKEN'
       - '--build-arg'
-      - 'CWB_TOKEN=$_CWB_TOKEN'
+      - 'CWA_TOKEN=$_CWA_TOKEN'
       - '--build-arg'
       - 'ACCESS_TOKEN=$_ACCESS_TOKEN'
       - '--build-arg'

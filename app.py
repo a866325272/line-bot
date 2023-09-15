@@ -16,7 +16,7 @@ import datetime as dt
 import requests, json, time, statistics, numpy, os, openai, random, logging
 load_dotenv()
 epa_token = os.getenv('EPA_TOKEN')
-cwb_token = os.getenv('CWB_TOKEN')
+cwa_token = os.getenv('CWA_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
@@ -362,10 +362,10 @@ def forecast(address):
             "連江縣":"F-D0047-083","金門縣":"F-D0047-087"}
     msg = '找不到天氣預報資訊。'    # 預設回傳訊息
     try:
-        url = f'https://opendata.cwb.gov.tw/fileapi/v1/opendataapi/F-C0032-001?Authorization={cwb_token}&downloadType=WEB&format=JSON'
+        url = f'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0032-001?Authorization={cwa_token}&downloadType=WEB&format=JSON'
         f_data = requests.get(url)   # 取得主要縣市預報資料
         f_data_json = f_data.json()  # json 格式化訊息內容
-        location = f_data_json['cwbopendata']['dataset']['location']  # 取得縣市的預報內容
+        location = f_data_json['cwaopendata']['dataset']['location']  # 取得縣市的預報內容
         for i in location:
             city = i['locationName']    # 縣市名稱
             #wx8 = i['weatherElement'][0]['time'][0]['parameter']['parameterName']    # 天氣現象
@@ -378,7 +378,7 @@ def forecast(address):
             if i in address:        # 如果使用者的地址包含縣市名稱
                 msg = area_list[i]  # 將 msg 換成對應的預報資訊
                 # 將進一步的預報網址換成對應的預報網址
-                url = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/{json_api[i]}?Authorization={cwb_token}&elementName=WeatherDescription'
+                url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/{json_api[i]}?Authorization={cwa_token}&elementName=WeatherDescription'
                 f_data = requests.get(url)  # 取得主要縣市裡各個區域鄉鎮的氣象預報
                 f_data_json = f_data.json() # json 格式化訊息內容
                 location = f_data_json['records']['locations'][0]['location']    # 取得預報內容
@@ -459,7 +459,7 @@ def current_weather(address):
     def get_data(url):
         w_data = requests.get(url)   # 爬取目前天氣網址的資料
         w_data_json = w_data.json()  # json 格式化訊息內容
-        location = w_data_json['cwbopendata']['location']  # 取出對應地點的內容
+        location = w_data_json['cwaopendata']['location']  # 取出對應地點的內容
         for i in location:
             #name = i['locationName']                       # 測站地點
             city = i['parameter'][0]['parameterValue']     # 縣市名稱
@@ -507,8 +507,8 @@ def current_weather(address):
 
     try:
         # 因為目前天氣有兩組網址，兩組都爬取
-        get_data(f'https://opendata.cwb.gov.tw/fileapi/v1/opendataapi/O-A0001-001?Authorization={cwb_token}&downloadType=WEB&format=JSON')
-        get_data(f'https://opendata.cwb.gov.tw/fileapi/v1/opendataapi/O-A0003-001?Authorization={cwb_token}&downloadType=WEB&format=JSON')
+        get_data(f'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0001-001?Authorization={cwa_token}&downloadType=WEB&format=JSON')
+        get_data(f'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0003-001?Authorization={cwa_token}&downloadType=WEB&format=JSON')
         for i in city_list:
             if i not in city_list2: # 將主要縣市裡的數值平均後，以主要縣市名稱為 key，再度儲存一次，如果找不到鄉鎮區域，就使用平均數值
                 city_list2[i] = {'temp':round(numpy.nanmean(city_list[i]['temp']),1),
@@ -532,8 +532,8 @@ def current_weather(address):
 def earth_quake():
     msg = ['找不到地震資訊','https://example.com/demo.jpg']             # 預設回傳的訊息
     try:
-        url = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={cwb_token}'
-        url2 = f'https://opendata.cwb.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization={cwb_token}'
+        url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={cwa_token}'
+        url2 = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization={cwa_token}'
         e_data = requests.get(url)                                      # 爬取區域地震資訊網址
         e_data_json = e_data.json()                                     # json 格式化訊息內容
         e_data2 = requests.get(url2)                                    # 爬取有感地震資訊網址
@@ -751,9 +751,9 @@ def linebot():
                     reply_message("明細已匯出，前往:"+sheet_url, tk, access_token)
             else:
                 if text == '雷達' or text == '雷達回波':
-                    reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-001.png?{time.time_ns()}', tk, access_token)
+                    reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-001.png?{time.time_ns()}', tk, access_token)
                 elif text == '衛星雲圖':
-                    reply_image(f'https://cwbopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
+                    reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
                 elif text == '颱風':
                     push_message("颱風資訊擷取中，請稍候...", ID, access_token)
                     typhoon(tk)

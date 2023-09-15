@@ -15,7 +15,7 @@ pipeline {
                 sh '''docker build -t ${REPO_URL}/jeff/line-bot:latest \
                 --no-cache \
                 --build-arg  ACCESS_TOKEN=${ACCESS_TOKEN} \
-                --build-arg  CWB_TOKEN=${CWB_TOKEN} \
+                --build-arg  CWA_TOKEN=${CWA_TOKEN} \
                 --build-arg  EPA_TOKEN=${EPA_TOKEN} \
                 --build-arg  OPENAI_TOKEN=${OPENAI_TOKEN} \
                 --build-arg  SECRET=${SECRET} \
