@@ -23,7 +23,8 @@ openai_token = os.getenv('OPENAI_TOKEN')
 log_path = os.getenv('LOG_PATH')
 import firestore    # firestore operations
 import gcs          # gcs operations
-import gss
+import gss          # google spreadsheet operations
+import lma          # line message api operations
 openai.api_key = openai_token
 
 # log config
@@ -529,7 +530,7 @@ def current_weather(address):
         return msg    # 如果取資料有發生錯誤，直接回傳 msg
 
 # 地震資訊函式
-def earth_quake():
+def earth_quake(tk, access_token):
     msg = ['找不到地震資訊','https://example.com/demo.jpg']             # 預設回傳的訊息
     try:
         url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={cwa_token}'
@@ -546,7 +547,6 @@ def earth_quake():
             dep = i['EarthquakeInfo']['FocalDepth']                     # 地震深度
             eq_time = i['EarthquakeInfo']['OriginTime']                                   # 地震時間
             img = i['ReportImageURI']                                   # 地震圖
-            #msg = [f'{loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。', img]
             break                                                       # 取出第一筆資料後就 break
         for i in eq2:
             loc2 = i['EarthquakeInfo']['Epicenter']['Location']         # 地震地點
@@ -554,97 +554,16 @@ def earth_quake():
             dep2 = i['EarthquakeInfo']['FocalDepth']                    # 地震深度
             eq_time2 = i['EarthquakeInfo']['OriginTime']                                  # 地震時間
             img2 = i['ReportImageURI']                                  # 地震圖
-            #msg = [f'{loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。', img]
             break                                                       # 取出第一筆資料後就 break
         if eq_time > eq_time2:                                          # 判斷最近一筆時間資料回傳
             msg = [f'{loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。', img]
         else:
             msg = [f'{loc2}，芮氏規模 {val2} 級，深度 {dep2} 公里，發生時間 {eq_time2}。', img2]
-        return msg                                                      # 回傳 msg
+        reply_msg = {"type": "text","text": msg[0]},{'type': 'image','originalContentUrl': msg[1],'previewImageUrl': msg[1]}
+        lma.reply_multi_message(reply_msg, tk, access_token)
+        return
     except:
-        return msg                                                      # 如果取資料有發生錯誤，直接回傳 msg
-
-# LINE 回傳圖片函式
-def reply_image(msg, rk, token):
-    headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
-    body = {
-    'replyToken':rk,
-    'messages':[{
-          'type': 'image',
-          'originalContentUrl': msg,
-          'previewImageUrl': msg
-        }]
-    }
-    req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    logger.info("reply_img:"+msg)
-
-# LINE 回傳影片函式
-def reply_video(preview, video, rk, token):
-    headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
-    body = {
-    'replyToken':rk,
-    'messages':[{
-          'type': 'video',
-          'originalContentUrl': video,
-          'previewImageUrl': preview
-        }]
-    }
-    req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    logger.info("reply_img:"+video)
-
-# LINE 回傳語音函式
-def reply_audio(msg, rk, token):
-    headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
-    body = {
-    'replyToken':rk,
-    'messages':[{
-          'type': 'audio',
-          'originalContentUrl': msg,
-          'duration': '600000'
-        }]
-    }
-    req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    logger.info("reply_audio:"+msg)
-
-# LINE 回傳訊息函式
-def reply_message(msg, rk, token):
-    headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
-    body = {
-    'replyToken':rk,
-    'messages':[{
-            "type": "text",
-            "text": msg
-        }]
-    }
-    req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    logger.info("reply_msg:"+msg)
-
-# LINE push 訊息函式
-def push_message(msg, ID, token):
-    headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}   
-    body = {
-    'to':ID,
-    'messages':[{
-            "type": "text",
-            "text": msg
-        }]
-    }
-    req = requests.request('POST', 'https://api.line.me/v2/bot/message/push', headers=headers,data=json.dumps(body).encode('utf-8'))
-    logger.info("push_msg:"+msg)
-
-# LINE 回傳flex訊息
-def reply_flex_message(msg, content, rk, token):
-    headers = {'Authorization':f'Bearer {token}','Content-Type':'application/json'}
-    body = {
-    'replyToken':rk,
-    'messages':[{
-            "type": "flex",
-            "altText": msg,
-            "contents": content
-        }]
-    }
-    req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
-    logger.info("reply_flex_msg:"+msg)
+        return
 
 app = Flask(__name__)
 
@@ -670,22 +589,22 @@ def linebot():
         type = json_data['events'][0]['message']['type']        # 取得 LINe 收到的訊息類型
         if type=='location':
             address = json_data['events'][0]['message']['address'].replace('台','臺')   # 取出地址資訊，並將「台」換成「臺」
-            reply_message(f'{current_weather(address)}\n\n{aqi(address)}\n\n{forecast(address)}', tk, access_token)
+            lma.reply_message(f'{current_weather(address)}\n\n{aqi(address)}\n\n{forecast(address)}', tk, access_token)
         if type=='text':
             text = json_data['events'][0]['message']['text']     # 取得 LINE 收到的文字訊息
             logger.info(text)
             if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsTalking'):
                 if text[0:6] == '開始對話模式':
-                    reply_message("對話模式已開始", tk, access_token)
+                    lma.reply_message("對話模式已開始", tk, access_token)
                 elif text[0:6] == '結束對話模式':
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsTalking',False)
                     firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
-                    reply_message("對話模式已結束", tk, access_token)
+                    lma.reply_message("對話模式已結束", tk, access_token)
                 elif text[0:6] == '清空對話紀錄':
                     firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
-                    reply_message("對話紀錄已清空", tk, access_token)
+                    lma.reply_message("對話紀錄已清空", tk, access_token)
                 else:
-                    reply_message(chatmode(text,client,ID), tk, access_token)
+                    lma.reply_message(chatmode(text,client,ID), tk, access_token)
             elif firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName'):
                 if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType'):
                     try:
@@ -701,22 +620,22 @@ def linebot():
                         firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',False)
                         firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount',False)
                         firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',False)
-                        reply_message(f'項目名稱:{name} 金額:{ammount} 類別:{typ} 輸入成功', tk, access_token)
+                        lma.reply_message(f'項目名稱:{name} 金額:{ammount} 類別:{typ} 輸入成功', tk, access_token)
                     except:
-                        reply_message("格式錯誤，請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
+                        lma.reply_message("格式錯誤，請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
                 else:
                     if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount'):
                         try:
                             ammount = float(text)
                             firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount',ammount)
                             firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',True)
-                            reply_message("請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
+                            lma.reply_message("請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
                         except:
-                            reply_message("格式錯誤，請輸入金額數字", tk, access_token)
+                            lma.reply_message("格式錯誤，請輸入金額數字", tk, access_token)
                     else:
                         firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName',text)
                         firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount',True)
-                        reply_message("請輸入金額", tk, access_token)
+                        lma.reply_message("請輸入金額", tk, access_token)
             elif firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsHistory'):
                     try:
                         if len(text) != 6:
@@ -726,7 +645,7 @@ def linebot():
                         if int(text[4:]) < 1 or int(text[4:]) > 12:
                             raise
                     except:
-                        reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
+                        lma.reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
                     summation = account_monthly(client, ID, text[:4]+"_"+text[4:])
                     percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他","投資"],summation[0],text[:4]+"年"+text[4:]+"月統計")
                     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
@@ -734,7 +653,7 @@ def linebot():
                     image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
                     content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"支出總計:"+str(sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg","color": "#FF0000"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(summation[0][0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(summation[0][1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(summation[0][2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(summation[0][3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(summation[0][4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(summation[0][5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(summation[0][6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"投資:"+str(summation[0][7])+"元("+percentages[7]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收入總計:"+str(summation[1])+"元","wrap":True,"weight":"bold","size":"lg","color": "#00FF00"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收支損益:"+str(summation[1]-sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg"}],"alignItems":"center"}]}}]}
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsHistory',False)
-                    reply_flex_message(text, content, tk, access_token)
+                    lma.reply_flex_message(text, content, tk, access_token)
             elif firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsReport'):
                     try:
                         if len(text) != 6:
@@ -744,62 +663,60 @@ def linebot():
                         if int(text[4:]) < 1 or int(text[4:]) > 12:
                             raise
                     except:
-                        reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
+                        lma.reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
                     data = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+text[:4]+"_"+text[4:])
                     sheet_url = account_detail(text, data)
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsReport',False)
-                    reply_message("明細已匯出，前往:"+sheet_url, tk, access_token)
+                    lma.reply_message("明細已匯出，前往:"+sheet_url, tk, access_token)
             else:
                 if text == '雷達' or text == '雷達回波':
-                    reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-001.png?{time.time_ns()}', tk, access_token)
+                    lma.reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-001.png?{time.time_ns()}', tk, access_token)
                 elif text == '衛星雲圖':
-                    reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
+                    lma.reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
                 elif text == '颱風':
-                    push_message("颱風資訊擷取中，請稍候...", ID, access_token)
+                    lma.push_message("颱風資訊擷取中，請稍候...", ID, access_token)
                     typhoon(tk)
-                    reply_video(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png', f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4', tk, access_token)
+                    lma.reply_video(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png', f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4', tk, access_token)
                 elif text == '地震資訊' or text == '地震':
-                    quake = earth_quake()                           # 爬取地震資訊
-                    push_message(quake[0], ID, access_token)  # 傳送地震資訊 ( 用 push 方法，因為 reply 只能用一次 )
-                    reply_image(quake[1], tk, access_token)         # 傳送地震圖片 ( 用 reply 方法 )
+                    earth_quake(tk, access_token)                           # 爬取地震資訊
                 elif text[0:2] == '畫，' or text[0:2] == '畫,':
                     openai_image_url = dalle(text[2:])
-                    reply_image(openai_image_url, tk, access_token)
+                    lma.reply_image(openai_image_url, tk, access_token)
                 elif text[0:2] == '聊，' or text[0:2] == '聊,':
                     completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文回覆)"}])
                     reply_msg = completion.choices[0].message.content
-                    reply_message(reply_msg, tk, access_token)
+                    lma.reply_message(reply_msg, tk, access_token)
                 elif text == '扛' or text == '坦':
-                    reply_image(get_meme(), tk, access_token)
+                    lma.reply_image(get_meme(), tk, access_token)
                 elif text == '抽':
-                    reply_image(get_beauty(), tk, access_token)
+                    lma.reply_image(get_beauty(), tk, access_token)
                 elif text in ('牡羊','金牛','雙子','巨蟹','獅子','處女','天秤','天蠍','射手','魔羯','水瓶','雙魚'):
-                    reply_message(get_luck(text), tk, access_token)
+                    lma.reply_message(get_luck(text), tk, access_token)
                 elif text in ("午餐","晚餐","肚子餓","吃甚麼","吃什麼"):
-                    reply_image(get_food(), tk, access_token)
+                    lma.reply_image(get_food(), tk, access_token)
                 elif text == '!help' or text == '！help':
                     reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n午餐,晚餐,肚子餓,吃什麼 - 幫你決定吃什麼\n聊， - ChatGPT陪你聊天\n畫， - DALL-E合成圖片\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音翻譯機翻成繁體中文\n加密貨幣:<交易對id> - 顯示價格\n!氣象 - 氣象指令說明\n!新聞 - 新聞指令說明\n!對話模式 - 對話模式指令說明'
-                    reply_message(reply_msg , tk, access_token)
+                    lma.reply_message(reply_msg , tk, access_token)
                 #elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
-                #    reply_message(get_cryptocurrency_market(), tk, access_token)
+                #    lma.reply_message(get_cryptocurrency_market(), tk, access_token)
                 elif text == '!氣象' or text == '！氣象':
                     reply_msg = f'氣象指令說明\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送雷達回波圖\n衛星雲圖 - 傳送衛星雲圖\n颱風 - 動態颱風路徑預測\n發送位置 - 回報天氣資訊和預報'
-                    reply_message(reply_msg , tk, access_token)
+                    lma.reply_message(reply_msg , tk, access_token)
                 elif text == '!記帳' or text == '！記帳':
                     reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目\n月帳 - 當月統計\n歷史 - 歷史月帳'
-                    reply_message(reply_msg , tk, access_token)
+                    lma.reply_message(reply_msg , tk, access_token)
                 elif text == '!新聞' or text == '！新聞':
                     reply_msg = f'新聞指令說明\n焦點新聞 - 三則焦點新聞\n國際新聞 - 三則國際新聞\n商業新聞 - 三則商業新聞\n科技新聞 - 三則科技新聞\n體育新聞 - 三則體育新聞\n娛樂新聞 - 三則娛樂新聞'
-                    reply_message(reply_msg , tk, access_token)
+                    lma.reply_message(reply_msg , tk, access_token)
                 elif text == '!對話模式' or text == '！對話模式':
                     reply_msg = f'對話模式指令說明\n開始對話模式 - 開始ChatGPT對話模式\n結束對話模式 - 結束ChatGPT對話模式\n清空對話紀錄 - 在對話模式過程中使用此指令，可讓ChatGPT遺忘先前的對話紀錄'
-                    reply_message(reply_msg , tk, access_token)
+                    lma.reply_message(reply_msg , tk, access_token)
                 elif text[0:5] == '加密貨幣:' or text == '加密貨幣：':
-                    reply_message(cryptocurrency(text[5:]), tk, access_token)
+                    lma.reply_message(cryptocurrency(text[5:]), tk, access_token)
                 elif text[0:6] == '開始對話模式':
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsTalking',True)
                     firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
-                    reply_message('對話模式已開始', tk, access_token)
+                    lma.reply_message('對話模式已開始', tk, access_token)
                 elif text in ["焦點新聞","國際新聞","商業新聞","科技新聞","體育新聞","娛樂新聞"]:
                     if text == "焦點新聞":
                         content = news("焦點新聞")
@@ -813,10 +730,10 @@ def linebot():
                         content = news("體育新聞")
                     elif text == "娛樂新聞":
                         content = news("娛樂新聞")
-                    reply_flex_message(text, content, tk, access_token)
+                    lma.reply_flex_message(text, content, tk, access_token)
                 elif text == "記帳":
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',True)
-                    reply_message('請輸入項目名稱', tk, access_token)
+                    lma.reply_message('請輸入項目名稱', tk, access_token)
                 elif text == "月帳":
                     summation = account_monthly(client, ID, datetime.now(timezone(timedelta(hours=+8))).strftime("%Y_%m_%d"))
                     percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他","投資"],summation[0],"本月統計")
@@ -824,23 +741,23 @@ def linebot():
                     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
                     image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
                     content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"支出總計:"+str(sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg","color": "#FF0000"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(summation[0][0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(summation[0][1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(summation[0][2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(summation[0][3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(summation[0][4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(summation[0][5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(summation[0][6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"投資:"+str(summation[0][7])+"元("+percentages[7]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收入總計:"+str(summation[1])+"元","wrap":True,"weight":"bold","size":"lg","color": "#00FF00"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收支損益:"+str(summation[1]-sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg"}],"alignItems":"center"}]}}]}
-                    reply_flex_message(text, content, tk, access_token)
+                    lma.reply_flex_message(text, content, tk, access_token)
                 elif text == "歷史":
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsHistory',True)
-                    reply_message('請輸入年月\nex.202307', tk, access_token)
+                    lma.reply_message('請輸入年月\nex.202307', tk, access_token)
                 elif text == "明細":
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsReport',True)
-                    reply_message('請輸入年月\nex.202307', tk, access_token)
+                    lma.reply_message('請輸入年月\nex.202307', tk, access_token)
                 else:
                     pass
         if type=='audio':
             completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
             msg = completion.choices[0].message.content
-            push_message(msg, ID, access_token)
+            lma.push_message(msg, ID, access_token)
             text_to_speech("cmn-TW-Wavenet-C",msg)
             gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./text-to-speech.wav", f'text-to-speech/text-to-speech{tk}.wav')
             gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'text-to-speech/text-to-speech{tk}.wav')
-            reply_audio(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/text-to-speech/text-to-speech{tk}.wav', tk, access_token)
+            lma.reply_audio(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/text-to-speech/text-to-speech{tk}.wav', tk, access_token)
         if type=='sticker':
             logger.info('sticker')
         if type=='video':
