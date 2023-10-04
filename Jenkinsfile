@@ -28,8 +28,8 @@ pipeline {
             steps {
                 sh "echo 'start pushing...'"
                 sh "docker push ${REPO_URL}/jeff/line-bot:latest"
-                sh "docker tag ${REPO_URL}/jeff/line-bot:latest ${REPO_URL}/jeff/line-bot:1.0.${BUILD_NUMBER}"
-                sh "docker push ${REPO_URL}/jeff/line-bot:1.0.${BUILD_NUMBER}"
+                sh "docker tag ${REPO_URL}/jeff/line-bot:latest ${REPO_URL}/jeff/line-bot:${MAJOR_VERSION}.${BUILD_NUMBER}"
+                sh "docker push ${REPO_URL}/jeff/line-bot:${MAJOR_VERSION}.${BUILD_NUMBER}"
                 sh "docker rmi ${REPO_URL}/jeff/line-bot:latest"
             }
         }
@@ -41,7 +41,7 @@ pipeline {
                 }
                 sh "ssh -i ${SSH_KEY} jeff@${DEPLOY_DEST} /usr/local/bin/docker-compose -f ${DOCKER_COMPOSE_FILE} down"
                 sh '''docker images | grep ${REPO_URL}/jeff/line-bot | awk '{print $3}' | xargs docker rmi'''
-                sh "ssh -i ${SSH_KEY} jeff@${DEPLOY_DEST} sed -i 's+${REPO_URL}/jeff/line-bot.*+${REPO_URL}/jeff/line-bot:1.0.${BUILD_NUMBER}+g' ${DOCKER_COMPOSE_FILE}"
+                sh "ssh -i ${SSH_KEY} jeff@${DEPLOY_DEST} sed -i 's+${REPO_URL}/jeff/line-bot.*+${REPO_URL}/jeff/line-bot:${MAJOR_VERSION}.${BUILD_NUMBER}+g' ${DOCKER_COMPOSE_FILE}"
                 sh "ssh -i ${SSH_KEY} jeff@${DEPLOY_DEST} /usr/local/bin/docker-compose -f ${DOCKER_COMPOSE_FILE} up -d"
             }
         }

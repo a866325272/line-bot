@@ -13,7 +13,7 @@ from playwright.sync_api import sync_playwright
 from moviepy.editor import VideoFileClip
 import google.cloud.texttospeech as tts
 import datetime as dt
-import requests, json, time, statistics, numpy, os, openai, random, logging
+import requests, json, time, statistics, numpy, os, openai, random, logging, subprocess
 load_dotenv()
 epa_token = os.getenv('EPA_TOKEN')
 cwa_token = os.getenv('CWA_TOKEN')
@@ -424,7 +424,7 @@ def forecast(address):
 
 # 颱風預測函式
 def typhoon(tk):
-    # 擷取颱風路徑錄影
+    '''# 擷取颱風路徑錄影
     with sync_playwright() as playwright:
         browser = playwright.webkit.launch()
         context = browser.new_context(record_video_dir="videos",record_video_size={"width": 640, "height": 360})
@@ -444,10 +444,41 @@ def typhoon(tk):
 
     # 刪除錄影檔
     if os.path.exists(file_path):
-        os.remove(file_path)
+        os.remove(file_path)'''
+    
+    with sync_playwright() as playwright:
+        browser = playwright.webkit.launch()
+        context = browser.new_context()
+        page = context.new_page()
+        page.goto('https://watch.ncdr.nat.gov.tw/watch_tracks_pro')
+
+        # Number of frames to capture
+        num_frames = 180
+
+        # Delay between frames in seconds
+        frame_delay = 1/6
+
+        for i in range(num_frames):
+            screenshot_path = f'typhoon_{i:03d}.png'
+            page.screenshot(path=f'typhoon_{i:03d}.png')
+            time.sleep(frame_delay)
+        context.close()
+
+    # Convert the screenshots into a video using FFmpeg
+    ffmpeg_command = [
+        'ffmpeg',
+        '-y',
+        '-framerate', '6',                # Frame rate (adjust as needed)
+        '-i', 'typhoon_%03d.png',       # Input file pattern
+        '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
+        'typhoon.mp4'                       # Output filename
+    ]
+
+    subprocess.run(ffmpeg_command)
 
     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./typhoon.mp4", f'typhoon/typhoon{tk}.mp4')
-    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./typhoon.png", f'typhoon/typhoon{tk}.png')
+    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./typhoon_018.png", f'typhoon/typhoon{tk}.png')
     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.mp4')
     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.png')
 
