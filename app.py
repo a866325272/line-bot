@@ -1,8 +1,8 @@
 from google.cloud import firestore
 from flask import Flask, request
 from linebot import WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
+#from linebot.exceptions import InvalidSignatureError
+#from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
 from random import choice
 from bs4 import BeautifulSoup
 from logging.handlers import TimedRotatingFileHandler
@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from datetime import timezone, timedelta, datetime
 from matplotlib import pyplot as plt
 from playwright.sync_api import sync_playwright
-from moviepy.editor import VideoFileClip
+#from moviepy.editor import VideoFileClip
 import google.cloud.texttospeech as tts
 import datetime as dt
 import requests, json, time, statistics, numpy, os, openai, random, logging, subprocess, concurrent.futures
@@ -51,7 +51,7 @@ def account_detail(text, data):
     if int(text[4:]) == 1:
         old_table = str(int(text[:4])-1)+"_12"
     elif int(text[4:]) in [11,12]:
-        text[:4]+"_"+str(int(text[4:])-1)
+        old_table = text[:4]+"_"+str(int(text[4:])-1)
     else:
         old_table = text[:4]+"_0"+str(int(text[4:])-1)
     update_table = [["","Type","Ammount","percetage","MoM"],
