@@ -248,8 +248,8 @@ def get_luck(sign):
     r = r[0:len(r)-1]
     return r
 
-# 取得表特圖函式
-def get_beauty():
+# 取得表特圖函式 https://beautyptt.cc/
+'''def get_beauty():
     imgs = []
     n = random.randrange(1,901)
     for i in range(n,n+2,1):
@@ -264,7 +264,18 @@ def get_beauty():
                 a = a[l-2:l+18]
                 imgs.append('https://'+a+'.jpg')
     img = choice(imgs)
-    return(img)
+    return(img)'''
+
+# 取得表特圖函式 https://jeff-dev.tplinkdns.com/beauty/
+def get_beauty():
+    url = 'https://jeff-dev.tplinkdns.com/beauty/'
+    web = requests.get(url)
+    soup = BeautifulSoup(web.text, "html.parser")
+    links = soup.find('pre').find_all('a')
+    link_values = [link.get('href') for link in links]
+    random_link = random.choice(link_values)
+    print(random_link)
+    return url+random_link
 
 # 取得迷因圖函式
 def get_meme():
