@@ -1,8 +1,6 @@
 from google.cloud import firestore
 from flask import Flask, request
 from linebot import WebhookHandler
-#from linebot.exceptions import InvalidSignatureError
-#from linebot.models import MessageEvent, TextMessage, TextSendMessage, ImageSendMessage
 from random import choice
 from bs4 import BeautifulSoup
 from logging.handlers import TimedRotatingFileHandler
@@ -10,10 +8,10 @@ from dotenv import load_dotenv
 from datetime import timezone, timedelta, datetime
 from matplotlib import pyplot as plt
 from playwright.sync_api import sync_playwright
-#from moviepy.editor import VideoFileClip
+from openai import OpenAI
 import google.cloud.texttospeech as tts
 import datetime as dt
-import requests, json, time, statistics, numpy, os, openai, random, logging, subprocess, concurrent.futures
+import requests, json, time, statistics, numpy, os, random, logging, subprocess, concurrent.futures
 load_dotenv()
 epa_token = os.getenv('EPA_TOKEN')
 cwa_token = os.getenv('CWA_TOKEN')
@@ -25,7 +23,6 @@ import firestore    # firestore operations
 import gcs          # gcs operations
 import gss          # google spreadsheet operations
 import lma          # line message api operations
-openai.api_key = openai_token
 
 # log config
 logger = logging.getLogger('')
@@ -172,8 +169,9 @@ def chatmode(input: str,client: str,ID: str) -> str:
     firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "user", "content": input}])
     messages = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'messages')
     logger.info(messages)
-    chat = openai.ChatCompletion.create(
-        model="gpt-4", messages=messages
+    openai_client = OpenAI(api_key=openai_token)
+    chat = openai_client.chat.completions.create(
+        model="gpt-4-1106-preview", messages=messages
     )
     reply = chat.choices[0].message.content
     firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "assistant", "content": reply}])
@@ -223,7 +221,8 @@ def speech_to_text(message_id) -> str:
     req = requests.request('GET', f'https://api-data.line.me/v2/bot/message/{message_id}/content', headers=headers)
     open("temp.wav","wb").write(req.content)
     f = open("temp.wav", "rb")
-    transcript = openai.Audio.transcribe("whisper-1", f)
+    openai_client = OpenAI(api_key=openai_token)
+    transcript = openai_client.audio.transcriptions.create("whisper-1", f)
     tr_json = json.loads(str(transcript))
     return tr_json['text']
 
@@ -274,7 +273,6 @@ def get_beauty():
     links = soup.find('pre').find_all('a')
     link_values = [link.get('href') for link in links]
     random_link = random.choice(link_values)
-    print(random_link)
     return url+random_link
 
 # 取得迷因圖函式
@@ -308,7 +306,6 @@ def get_food():
     links = soup.find('pre').find_all('a')
     link_values = [link.get('href') for link in links]
     random_link = random.choice(link_values)
-    print(random_link)
     return url+random_link
 
 # OpenAI製圖函式
@@ -734,10 +731,11 @@ def linebot():
                 elif text == '地震資訊' or text == '地震':
                     earth_quake(tk, access_token)                           # 爬取地震資訊
                 elif text[0:2] == '畫，' or text[0:2] == '畫,':
-                    openai_image_url = dalle(text[2:])
-                    lma.reply_image(openai_image_url, tk, access_token)
+                    image_url = dalle(text[2:])
+                    lma.reply_image(image_url, tk, access_token)
                 elif text[0:2] == '聊，' or text[0:2] == '聊,':
-                    completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文回覆)"}])
+                    openai_client = OpenAI(api_key=openai_token)
+                    completion = openai_client.chat.completions.create(model="gpt-4-1106-preview", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文(台灣)回覆)"}])
                     reply_msg = completion.choices[0].message.content
                     lma.reply_message(reply_msg, tk, access_token)
                 elif text == '扛' or text == '坦':
@@ -805,7 +803,8 @@ def linebot():
                 else:
                     pass
         if type=='audio':
-            completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
+            openai_client = OpenAI(api_key=openai_token)
+            completion = openai_client.chat.completions.create(model="gpt-4-1106-preview", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
             msg = completion.choices[0].message.content
             lma.push_message(msg, ID, access_token)
             text_to_speech("cmn-TW-Wavenet-C",msg)
