@@ -9,6 +9,7 @@ from datetime import timezone, timedelta, datetime
 from matplotlib import pyplot as plt
 from playwright.sync_api import sync_playwright
 from openai import OpenAI
+from pydub import AudioSegment
 import google.cloud.texttospeech as tts
 import datetime as dt
 import requests, json, time, statistics, numpy, os, random, logging, subprocess, concurrent.futures
@@ -103,26 +104,6 @@ def pie_chart(index: list, value: list, title: str):
     # download plot
     plt.savefig('accounts-pie-chart.png')
     return res
-
-# 文字轉語音
-def text_to_speech(voice_name: str, text: str):
-    language_code = "-".join(voice_name.split("-")[:2])
-    text_input = tts.SynthesisInput(text=text)
-    voice_params = tts.VoiceSelectionParams(
-        language_code=language_code, name=voice_name
-    )
-    audio_config = tts.AudioConfig(audio_encoding=tts.AudioEncoding.LINEAR16)
-
-    client = tts.TextToSpeechClient()
-    response = client.synthesize_speech(
-        input=text_input,
-        voice=voice_params,
-        audio_config=audio_config,
-    )
-
-    filename = "text-to-speech.wav"
-    with open(filename, "wb") as out:
-        out.write(response.audio_content)
 
 # 取得新聞
 def news(cat: str):
@@ -222,9 +203,8 @@ def speech_to_text(message_id) -> str:
     open("temp.wav","wb").write(req.content)
     f = open("temp.wav", "rb")
     openai_client = OpenAI(api_key=openai_token)
-    transcript = openai_client.audio.transcriptions.create("whisper-1", f)
-    tr_json = json.loads(str(transcript))
-    return tr_json['text']
+    transcript = openai_client.audio.transcriptions.create(model="whisper-1", file=f)
+    return transcript.text
 
 # 取得今日星座運勢
 def get_luck(sign):
@@ -233,19 +213,19 @@ def get_luck(sign):
     web = requests.get(url)
     soup = BeautifulSoup(web.text, "html.parser")
     luck = soup.find_all("div", class_="TODAY_CONTENT")
-    r = str(luck).replace('[<div class="TODAY_CONTENT">', "")
-    r = r.replace("<h3>", "")
-    r = r.replace("</h3>", "")
-    r = r.replace('<p><span class="txt_green">', "")
-    r = r.replace('<p><span class="txt_pink">', "")
-    r = r.replace('<p><span class="txt_blue">', "")
-    r = r.replace('<p><span class="txt_orange">', "")
-    r = r.replace('</span></p><p>', "")
-    r = r.replace('</p>', "")
-    r = r.replace('</div>]', "")
-    r = r.replace(f"\n今","今")
-    r = r[0:len(r)-1]
-    return r
+    luck_msg = str(luck).replace('[<div class="TODAY_CONTENT">', "")
+    luck_msg = luck_msg.replace("<h3>", "")
+    luck_msg = luck_msg.replace("</h3>", "")
+    luck_msg = luck_msg.replace('<p><span class="txt_green">', "")
+    luck_msg = luck_msg.replace('<p><span class="txt_pink">', "")
+    luck_msg = luck_msg.replace('<p><span class="txt_blue">', "")
+    luck_msg = luck_msg.replace('<p><span class="txt_orange">', "")
+    luck_msg = luck_msg.replace('</span></p><p>', "")
+    luck_msg = luck_msg.replace('</p>', "")
+    luck_msg = luck_msg.replace('</div>]', "")
+    luck_msg = luck_msg.replace(f"\n今","今")
+    luck_msg = luck_msg[0:len(luck_msg)-1]
+    return luck_msg
 
 # 取得表特圖函式 https://beautyptt.cc/
 '''def get_beauty():
@@ -310,15 +290,14 @@ def get_food():
 
 # OpenAI製圖函式
 def dalle(msg):
-    headers = {'Authorization':f'Bearer {openai_token}','Content-Type':'application/json'}
-    body = {
-    "prompt": msg,
-    "n": 1,
-    "size": "256x256"
-    }
-    req = requests.request('POST', 'https://api.openai.com/v1/images/generations', headers=headers,data=json.dumps(body).encode('utf-8'))
-    req_data_json = req.json()
-    return req_data_json['data'][0]['url']
+    openai_client = OpenAI(api_key=openai_token)
+    draw = openai_client.images.generate(
+    model="dall-e-3",
+    prompt=msg,
+    n=1,
+    size="1024x1024"
+    )
+    return draw.data[0].url
 
 # 空氣品質函式
 def aqi(address):
@@ -618,6 +597,40 @@ def earth_quake(tk, access_token):
     except:
         return
 
+def interpretation(orig_txt: str, tk):
+    # 文字轉語音
+    def text_to_speech(voice_name: str, text: str):
+        language_code = "-".join(voice_name.split("-")[:2])
+        text_input = tts.SynthesisInput(text=text)
+        voice_params = tts.VoiceSelectionParams(
+            language_code=language_code, name=voice_name
+        )
+        audio_config = tts.AudioConfig(audio_encoding=tts.AudioEncoding.LINEAR16)
+
+        client = tts.TextToSpeechClient()
+        response = client.synthesize_speech(
+            input=text_input,
+            voice=voice_params,
+            audio_config=audio_config,
+        )
+
+        filename = "text-to-speech.wav"
+        with open(filename, "wb") as out:
+            out.write(response.audio_content)
+
+        audio = AudioSegment.from_file(filename, format="wav")
+        audio_duration = len(audio)
+        return audio_duration
+
+    openai_client = OpenAI(api_key=openai_token)
+    completion = openai_client.chat.completions.create(model="gpt-4-1106-preview", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+orig_txt}])
+    msg = completion.choices[0].message.content
+    audio_duration = text_to_speech("cmn-TW-Wavenet-C",msg)
+    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./text-to-speech.wav", f'text-to-speech/text-to-speech{tk}.wav')
+    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'text-to-speech/text-to-speech{tk}.wav')
+    reply_msg = {"type": "text","text": msg},{'type': 'audio','originalContentUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/text-to-speech/text-to-speech{tk}.wav','duration': audio_duration}
+    return reply_msg
+
 app = Flask(__name__)
 
 @app.route("/", methods=['POST'])
@@ -747,15 +760,18 @@ def linebot():
                 elif text in ("午餐","晚餐","肚子餓","吃甚麼","吃什麼"):
                     lma.reply_image(get_food(), tk, access_token)
                 elif text == '!help' or text == '！help':
-                    reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n午餐,晚餐,肚子餓,吃什麼 - 幫你決定吃什麼\n聊， - ChatGPT陪你聊天\n畫， - DALL-E合成圖片\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音翻譯機翻成繁體中文\n加密貨幣:<交易對id> - 顯示價格\n!氣象 - 氣象指令說明\n!新聞 - 新聞指令說明\n!對話模式 - 對話模式指令說明'
+                    reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n午餐,晚餐,肚子餓,吃什麼 - 幫你決定吃什麼\n聊， - GPT-4對話\n畫， - DALL-E-3合成圖片\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音翻譯機翻成繁體中文\n!加密貨幣 - 加密貨幣指令說明\n!氣象 - 氣象指令說明\n!新聞 - 新聞指令說明\n!對話模式 - 對話模式指令說明'
                     lma.reply_message(reply_msg , tk, access_token)
-                #elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
-                #    lma.reply_message(get_cryptocurrency_market(), tk, access_token)
+                elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
+                    lma.reply_message(get_cryptocurrency_market(), tk, access_token)
+                elif text == '!加密貨幣' or text == '！加密貨幣':
+                    reply_msg = f'加密貨幣指令說明\n加密貨幣:列表 - 顯示交易對列表\n加密貨幣:<交易對id> - 顯示價格'
+                    lma.reply_message(reply_msg , tk, access_token)
                 elif text == '!氣象' or text == '！氣象':
-                    reply_msg = f'氣象指令說明\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送雷達回波圖\n衛星雲圖 - 傳送衛星雲圖\n颱風 - 動態颱風路徑預測\n發送位置 - 回報天氣資訊和預報'
+                    reply_msg = f'氣象指令說明\n地震 - 傳送最近一筆地震資訊\n雷達回波 - 傳送雷達回波圖\n衛星雲圖 - 傳送衛星雲圖\n颱風 - 颱風路徑預測\n發送位置 - 回報天氣資訊和預報'
                     lma.reply_message(reply_msg , tk, access_token)
                 elif text == '!記帳' or text == '！記帳':
-                    reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目\n月帳 - 當月統計\n歷史 - 歷史月帳'
+                    reply_msg = f'記帳指令說明\n記帳 - 紀錄新項目\n月帳 - 當月統計\n歷史 - 歷史月帳\n明細 - 傳送明細到雲端硬碟'
                     lma.reply_message(reply_msg , tk, access_token)
                 elif text == '!新聞' or text == '！新聞':
                     reply_msg = f'新聞指令說明\n焦點新聞 - 三則焦點新聞\n國際新聞 - 三則國際新聞\n商業新聞 - 三則商業新聞\n科技新聞 - 三則科技新聞\n體育新聞 - 三則體育新聞\n娛樂新聞 - 三則娛樂新聞'
@@ -803,14 +819,8 @@ def linebot():
                 else:
                     pass
         if type=='audio':
-            openai_client = OpenAI(api_key=openai_token)
-            completion = openai_client.chat.completions.create(model="gpt-4-1106-preview", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+speech_to_text(json_data['events'][0]['message']['id'])}])
-            msg = completion.choices[0].message.content
-            lma.push_message(msg, ID, access_token)
-            text_to_speech("cmn-TW-Wavenet-C",msg)
-            gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./text-to-speech.wav", f'text-to-speech/text-to-speech{tk}.wav')
-            gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'text-to-speech/text-to-speech{tk}.wav')
-            lma.reply_audio(f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/text-to-speech/text-to-speech{tk}.wav', tk, access_token)
+            reply_msg = interpretation(speech_to_text(json_data['events'][0]['message']['id']), tk)
+            lma.reply_multi_message(reply_msg, tk, access_token)
         if type=='sticker':
             logger.info('sticker')
         if type=='video':
