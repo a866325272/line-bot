@@ -485,80 +485,83 @@ def typhoon(tk, ID, access_token):
     lma.reply_multi_message(reply_msg, tk, access_token)
 # 目前天氣函式
 def current_weather(address):
-    city_list, city_list2, area_list, area_list2 = {}, {}, {}, {} # 定義好待會要用的變數
+    city_list, city_list_avg, area_list, area_list2_avg = {}, {}, {}, {} # 定義好待會要用的變數
     msg = '找不到氣象資訊。'                         # 預設回傳訊息
 
     # 定義取得資料的函式
     def get_data(url):
         w_data = requests.get(url)   # 爬取目前天氣網址的資料
         w_data_json = w_data.json()  # json 格式化訊息內容
-        location = w_data_json['cwaopendata']['location']  # 取出對應地點的內容
-        for i in location:
-            #name = i['locationName']                       # 測站地點
-            city = i['parameter'][0]['parameterValue']     # 縣市名稱
-            area = i['parameter'][2]['parameterValue']     # 鄉鎮行政區
+        stations = w_data_json['cwaopendata']['dataset']['Station']  # 取出各測站的內容
+        for station in stations:
+            city = station['GeoInfo']['CountyName']     # 縣市名稱
+            area = station['GeoInfo']['TownName']     # 鄉鎮行政區
             city_area = city + area
-            temp = check_data(i['weatherElement'][3]['elementValue']['value'])                       # 氣溫
-            humd = check_data(round(float(i['weatherElement'][4]['elementValue']['value'] )*100 ,1)) # 相對濕度
-            r24 = check_data(i['weatherElement'][6]['elementValue']['value'])                        # 累積雨量
-
+            weather = station['WeatherElement']['Weather']                      # 氣溫
+            temp = check_data(station['WeatherElement']['AirTemperature'])                       # 氣溫
+            humd = check_data(station['WeatherElement']['RelativeHumidity']) # 相對濕度                       # 累積雨量
+            r24 = check_data(station['WeatherElement']['Now']['Precipitation'])                        # 累積雨量
             if city_area not in area_list:
                 area_list[city_area] = {'temp':[], 'humd':[], 'r24':[], 'wx':[]}      # 以鄉鎮區域為 key，儲存需要的資訊
             if city not in city_list:
-                city_list[city] = {'temp':[], 'humd':[], 'r24':[]}      # 以主要縣市名稱為 key，準備紀錄裡面所有鄉鎮的數值
+                city_list[city] = {'temp':[], 'humd':[], 'r24':[], 'wx':[]}      # 以主要縣市名稱為 key，準備紀錄裡面所有鄉鎮的數值
             city_list[city]['temp'].append(temp)   # 記錄主要縣市裡鄉鎮區域的溫度 ( 串列格式 )
             city_list[city]['humd'].append(humd)   # 記錄主要縣市裡鄉鎮區域的濕度 ( 串列格式 )
             city_list[city]['r24'].append(r24)     # 記錄主要縣市裡鄉鎮區域的雨量 ( 串列格式 )
+            city_list[city]['wx'].append(weather)       # 記錄主要縣市裡鄉鎮區域的雨量 ( 串列格式 )
             area_list[city_area]['temp'].append(temp)   # 記錄鄉鎮區域的溫度 ( 串列格式 )
             area_list[city_area]['humd'].append(humd)   # 記錄鄉鎮區域的濕度 ( 串列格式 )
             area_list[city_area]['r24'].append(r24)     # 記錄鄉鎮區域的雨量 ( 串列格式 )
-            if 'O-A0003-001' in url:
-                wx = i['weatherElement'][20]['elementValue']['value']
-                area_list[city_area]['wx'].append(wx)       # 記錄鄉鎮區域的天氣描述 ( 串列格式 )
-
+            area_list[city_area]['wx'].append(weather)       # 記錄鄉鎮區域的天氣描述 ( 串列格式 )
+            ##if 'O-A0003-001' in url:
+            ##    #wx = station['weatherElement'][20]['elementValue']['value']
+            ##    weather = station['WeatherElement']['Weather']
+            ##    area_list[city_area]['wx'].append(weather)       # 記錄鄉鎮區域的天氣描述 ( 串列格式 )
 
     # 定義如果數值小於 0，回傳 nan 的函式
     def check_data(e):
         return numpy.nan if float(e)<0 else float(e)
 
     # 定義產生回傳訊息的函式
-    def msg_content(loc, msg):
-        a = msg
-        for i in loc:
-            if i in address: # 如果地址裡存在 key 的名稱
-                wx = ""
-                temp = f"氣溫 {loc[i]['temp']} 度，" if loc[i]['temp'] != None else ''
-                humd = f"相對濕度 {loc[i]['humd']}%，" if loc[i]['humd'] != None else ''
-                r24 = f"累積雨量 {loc[i]['r24']}mm，" if loc[i]['r24'] != None else ''
-                if len(loc[i])==4 and loc[i]['wx'] != []:
-                    wx = f"{loc[i]['wx'][0]}，"
+    def msg_content(loc_list, msg):
+        for loc in loc_list:
+            if loc in address: # 如果地址裡存在 key 的名稱
+                ##wx = ""
+                temp = f"氣溫 {loc_list[loc]['temp']} 度，" if loc_list[loc]['temp'] != None else ''
+                humd = f"相對濕度 {loc_list[loc]['humd']}%，" if loc_list[loc]['humd'] != None else ''
+                r24 = f"累積雨量 {loc_list[loc]['r24']}mm，" if loc_list[loc]['r24'] != None else ''
+                wx = f"{loc_list[loc]['wx'][0]}，" if loc_list[loc]['r24'] != None else ''
+                ##if len(loc_list[loc])==4 and loc_list[loc]['wx'] != []:
+                ##    wx = f"{loc_list[loc]['wx'][0]}，"
 
-                description = i+f'目前天氣 :\n{wx}{temp}{humd}{r24}'.strip('，')
-                a = f'{description}。' # 取出 key 的內容作為回傳訊息使用
+                description = loc+f'目前天氣 :\n{wx}{temp}{humd}{r24}'.strip('，')
+                msg = f'{description}。' # 取出 key 的內容作為回傳訊息使用
                 break
-        return a
+        return msg
 
     try:
         # 因為目前天氣有兩組網址，兩組都爬取
         get_data(f'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0001-001?Authorization={cwa_token}&downloadType=WEB&format=JSON')
         get_data(f'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0003-001?Authorization={cwa_token}&downloadType=WEB&format=JSON')
-        for i in city_list:
-            if i not in city_list2: # 將主要縣市裡的數值平均後，以主要縣市名稱為 key，再度儲存一次，如果找不到鄉鎮區域，就使用平均數值
-                city_list2[i] = {'temp':round(numpy.nanmean(city_list[i]['temp']),1),
-                                'humd':round(numpy.nanmean(city_list[i]['humd']),1),
-                                'r24':round(numpy.nanmean(city_list[i]['r24']),1)
+        for city in city_list:
+            if city not in city_list_avg: # 將主要縣市裡的數值平均後，以主要縣市名稱為 key，再度儲存一次，如果找不到鄉鎮區域，就使用平均數值
+                city_list_avg[city] = {'temp':round(numpy.nanmean(city_list[city]['temp']),1),
+                                'humd':round(numpy.nanmean(city_list[city]['humd']),1),
+                                'r24':round(numpy.nanmean(city_list[city]['r24']),1),
+                                'wx':city_list[city]['wx']
                                 }
-        for i in area_list:
-            if i not in area_list2: # 將鄉鎮區域裡的數值平均後，以鄉鎮區域名稱為 key，使用平均數值
-                area_list2[i] = {'temp':round(numpy.nanmean(area_list[i]['temp']),1),
-                                'humd':round(numpy.nanmean(area_list[i]['humd']),1),
-                                'r24':round(numpy.nanmean(area_list[i]['r24']),1),
-                                'wx':area_list[i]['wx']
+        for area in area_list:
+            if area not in area_list2_avg: # 將鄉鎮區域裡的數值平均後，以鄉鎮區域名稱為 key，使用平均數值
+                area_list2_avg[area] = {'temp':round(numpy.nanmean(area_list[area]['temp']),1),
+                                'humd':round(numpy.nanmean(area_list[area]['humd']),1),
+                                'r24':round(numpy.nanmean(area_list[area]['r24']),1),
+                                'wx':area_list[area]['wx']
                                 }
-        msg = msg_content(city_list2, msg)  # 將訊息改為「大縣市」
-        msg = msg_content(area_list2, msg)   # 將訊息改為「鄉鎮區域」
+        msg = msg_content(city_list_avg, msg)  # 將訊息改為「大縣市」
+        msg = msg_content(area_list2_avg, msg)   # 將訊息改為「鄉鎮區域」
         return msg    # 回傳 msg
-    except:
+    except Exception as e:
+        logger.warning('exception:'+str(e))
         return msg    # 如果取資料有發生錯誤，直接回傳 msg
 
 # 地震資訊函式
