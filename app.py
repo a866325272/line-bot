@@ -36,42 +36,94 @@ console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
 
-# 月帳明細
-def account_detail(text, data):
-    headers = list(data[0].keys())
-    values =[]
-    for item in data:
-        values.append(list(item.values()))
-    gss.delete_worksheet_if_exist('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
-    gss.create_worksheet('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
-    gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],[headers])
-    gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],values)
-    if int(text[4:]) == 1:
-        old_table = str(int(text[:4])-1)+"_12"
-    elif int(text[4:]) in [11,12]:
-        old_table = text[:4]+"_"+str(int(text[4:])-1)
+# 記帳
+def accounting(text: str, client: str, ID: str, tk: str):
+    if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType'):
+        try:
+            typ = int(text)
+            if typ not in [1,2,3,4,5,6,7,8,11]:
+                raise
+            ammount = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
+            name = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
+            date = datetime.now(timezone(timedelta(hours=+8))).strftime("%Y_%m_%d")
+            firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7],[{"Name": name, "Ammount": ammount, "Type": typ, "Date": date}])
+            firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
+            firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
+            firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',False)
+            firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount',False)
+            firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',False)
+            lma.reply_message(f'項目名稱:{name} 金額:{ammount} 類別:{typ} 輸入成功', tk, access_token)
+        except:
+            lma.reply_message("格式錯誤，請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
     else:
-        old_table = text[:4]+"_0"+str(int(text[4:])-1)
-    update_table = [["","Type","Ammount","percetage","MoM"],
-    ["1","飲食",'=SUMIF($A$2:$A,"=1",$B$2:$B)',"=G2/$G$13",f'=G2-{old_table}!G2'],
-    ["2","生活",'=SUMIF($A$2:$A,"=2",$B$2:$B)',"=G3/$G$13",f'=G3-{old_table}!G3'],
-    ["3","居住",'=SUMIF($A$2:$A,"=3",$B$2:$B)',"=G4/$G$13",f'=G4-{old_table}!G4'],
-    ["4","交通",'=SUMIF($A$2:$A,"=4",$B$2:$B)',"=G5/$G$13",f'=G5-{old_table}!G5'],
-    ["5","娛樂",'=SUMIF($A$2:$A,"=5",$B$2:$B)',"=G6/$G$13",f'=G6-{old_table}!G6'],
-    ["6","醫療",'=SUMIF($A$2:$A,"=6",$B$2:$B)',"=G7/$G$13",f'=G7-{old_table}!G7'],
-    ["7","其他",'=SUMIF($A$2:$A,"=7",$B$2:$B)',"=G8/$G$13",f'=G8-{old_table}!G8'],
-    ["8","投資",'=SUMIF($A$2:$A,"=8",$B$2:$B)',"=G9/$G$13",f'=G9-{old_table}!G9'],
-    ["","","","",""],
-    ["","","","",""],
-    ["11","收入",'=SUMIF($A$2:$A,"=11",$B$2:$B)',"",f'=G12-{old_table}!G12'],
-    ["","支出","=SUM(G2:G9)","",f'=G13-{old_table}!G13'],
-    ["","損益","=G12-SUM(G2:G9)","",""]]
-    sheet_url = gss.update_table('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],update_table,"E1")
-    gss.set_format_percent('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],'H2:H9')
-    return sheet_url
+        if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount'):
+            try:
+                ammount = float(text)
+                firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount',ammount)
+                firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',True)
+                lma.reply_message("請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
+            except:
+                lma.reply_message("格式錯誤，請輸入金額數字", tk, access_token)
+        else:
+            firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName',text)
+            firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount',True)
+            lma.reply_message("請輸入金額", tk, access_token)
+
+# 月帳明細
+def account_detail(text: str, client: str, ID: str, tk: str) -> str:
+    def make_sheet(text: str, data):
+        headers = list(data[0].keys())
+        values =[]
+        for item in data:
+            values.append(list(item.values()))
+        gss.delete_worksheet_if_exist('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
+        gss.create_worksheet('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
+        gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],[headers])
+        gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],values)
+        if int(text[4:]) == 1:
+            old_table = str(int(text[:4])-1)+"_12"
+        elif int(text[4:]) in [11,12]:
+            old_table = text[:4]+"_"+str(int(text[4:])-1)
+        else:
+            old_table = text[:4]+"_0"+str(int(text[4:])-1)
+        update_table = [["","Type","Ammount","percetage","MoM"],
+        ["1","飲食",'=SUMIF($A$2:$A,"=1",$B$2:$B)',"=G2/$G$13",f'=G2-{old_table}!G2'],
+        ["2","生活",'=SUMIF($A$2:$A,"=2",$B$2:$B)',"=G3/$G$13",f'=G3-{old_table}!G3'],
+        ["3","居住",'=SUMIF($A$2:$A,"=3",$B$2:$B)',"=G4/$G$13",f'=G4-{old_table}!G4'],
+        ["4","交通",'=SUMIF($A$2:$A,"=4",$B$2:$B)',"=G5/$G$13",f'=G5-{old_table}!G5'],
+        ["5","娛樂",'=SUMIF($A$2:$A,"=5",$B$2:$B)',"=G6/$G$13",f'=G6-{old_table}!G6'],
+        ["6","醫療",'=SUMIF($A$2:$A,"=6",$B$2:$B)',"=G7/$G$13",f'=G7-{old_table}!G7'],
+        ["7","其他",'=SUMIF($A$2:$A,"=7",$B$2:$B)',"=G8/$G$13",f'=G8-{old_table}!G8'],
+        ["8","投資",'=SUMIF($A$2:$A,"=8",$B$2:$B)',"=G9/$G$13",f'=G9-{old_table}!G9'],
+        ["","","","",""],
+        ["","","","",""],
+        ["11","收入",'=SUMIF($A$2:$A,"=11",$B$2:$B)',"",f'=G12-{old_table}!G12'],
+        ["","支出","=SUM(G2:G9)","",f'=G13-{old_table}!G13'],
+        ["","損益","=G12-SUM(G2:G9)","",""]]
+        sheet_url = gss.update_table('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],update_table,"E1")
+        gss.set_format_percent('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],'H2:H9')
+        return sheet_url
+
+    try:
+        if len(text) != 6:
+            raise
+        if int(text[:4]) < 1900 or int(text[:4]) > 2399:
+            raise
+        if int(text[4:]) < 1 or int(text[4:]) > 12:
+            raise
+    except:
+        lma.reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
+    data = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+text[:4]+"_"+text[4:])
+    sheet_url = make_sheet(text, data)
+    firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsReport',False)
+    return "明細已匯出，前往:"+sheet_url
 
 # 月帳統計
-def account_monthly(client, ID, date):
+def account_monthly(client: str, ID: str, date: str, tk: str) -> str:
+    if len(date) != 6 or int(date[:4]) < 1900 or int(date[:4]) > 2399 or int(date[4:]) < 1 or int(date[4:]) > 12:
+        lma.reply_message("日期格式錯誤，請輸入年月\nex.202307", tk, access_token)
+        raise ValueError("account_monthly:月帳函式日期格式錯誤")
+    date = date[:4]+"_"+date[4:]
     accounts = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7])
     cost_summation = [0,0,0,0,0,0,0,0]
     income_summation = 0
@@ -81,7 +133,12 @@ def account_monthly(client, ID, date):
                 cost_summation[i] += account['Ammount']
         if account['Type'] == 11:
             income_summation += account['Ammount']
-    return [cost_summation,income_summation]
+    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他","投資"],cost_summation,"本月統計")
+    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
+    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
+    image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
+    reply_msg = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"支出總計:"+str(sum(cost_summation))+"元","wrap":True,"weight":"bold","size":"lg","color": "#FF0000"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(cost_summation[0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(cost_summation[1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(cost_summation[2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(cost_summation[3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(cost_summation[4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(cost_summation[5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(cost_summation[6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"投資:"+str(cost_summation[7])+"元("+percentages[7]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收入總計:"+str(income_summation)+"元","wrap":True,"weight":"bold","size":"lg","color": "#00FF00"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收支損益:"+str(income_summation-sum(cost_summation))+"元","wrap":True,"weight":"bold","size":"lg"}],"alignItems":"center"}]}}]}
+    return reply_msg
 
 # 生成圓餅圖
 def pie_chart(index: list, value: list, title: str):
@@ -146,17 +203,30 @@ def news(cat: str):
     return content
 
 # 對話模式
-def chatmode(input: str,client: str,ID: str) -> str:
-    firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "user", "content": input}])
-    messages = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'messages')
-    logger.info(messages)
-    openai_client = OpenAI(api_key=openai_token)
-    chat = openai_client.chat.completions.create(
-        model="gpt-4-1106-preview", messages=messages
-    )
-    reply = chat.choices[0].message.content
-    firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "assistant", "content": reply}])
-    return reply
+def chatmode(text: str, client: str, ID: str, tk: str):
+    def chat(input: str,client: str,ID: str) -> str:
+        firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "user", "content": input}])
+        messages = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'messages')
+        logger.info(messages)
+        openai_client = OpenAI(api_key=openai_token)
+        chat = openai_client.chat.completions.create(
+            model="gpt-4-1106-preview", messages=messages
+        )
+        reply = chat.choices[0].message.content
+        firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "assistant", "content": reply}])
+        return reply
+
+    if text[0:6] == '開始對話模式':
+        lma.reply_message("對話模式已開始", tk, access_token)
+    elif text[0:6] == '結束對話模式':
+        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsTalking',False)
+        firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
+        lma.reply_message("對話模式已結束", tk, access_token)
+    elif text[0:6] == '清空對話紀錄':
+        firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
+        lma.reply_message("對話紀錄已清空", tk, access_token)
+    else:
+        lma.reply_message(chat(text,client,ID), tk, access_token)
 
 # 取得加密貨幣交易對列表
 def get_cryptocurrency_market():
@@ -483,6 +553,7 @@ def typhoon(tk, ID, access_token):
     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/windy{tk}.png')
     reply_msg={'type': 'video','originalContentUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4','previewImageUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png'},{'type': 'video','originalContentUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.mp4','previewImageUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.png'}
     lma.reply_multi_message(reply_msg, tk, access_token)
+
 # 目前天氣函式
 def current_weather(address):
     city_list, city_list_avg, area_list, area_list2_avg = {}, {}, {}, {} # 定義好待會要用的變數
@@ -600,6 +671,7 @@ def earth_quake(tk, access_token):
     except:
         return
 
+# 語音翻譯函式
 def interpretation(orig_txt: str, tk):
     # 文字轉語音
     def text_to_speech(voice_name: str, text: str):
@@ -659,114 +731,25 @@ def linebot():
         if type=='location':
             address = json_data['events'][0]['message']['address'].replace('台','臺')   # 取出地址資訊，並將「台」換成「臺」
             lma.reply_message(f'{current_weather(address)}\n\n{aqi(address)}\n\n{forecast(address)}', tk, access_token)
+        if type=='audio':
+            reply_msg = interpretation(speech_to_text(json_data['events'][0]['message']['id']), tk)
+            lma.reply_multi_message(reply_msg, tk, access_token)
         if type=='text':
             text = json_data['events'][0]['message']['text']     # 取得 LINE 收到的文字訊息
             logger.info(text)
             if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsTalking'):
-                if text[0:6] == '開始對話模式':
-                    lma.reply_message("對話模式已開始", tk, access_token)
-                elif text[0:6] == '結束對話模式':
-                    firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsTalking',False)
-                    firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
-                    lma.reply_message("對話模式已結束", tk, access_token)
-                elif text[0:6] == '清空對話紀錄':
-                    firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
-                    lma.reply_message("對話紀錄已清空", tk, access_token)
-                else:
-                    lma.reply_message(chatmode(text,client,ID), tk, access_token)
+                chatmode(text, client, ID, tk)
             elif firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName'):
-                if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType'):
-                    try:
-                        typ = int(text)
-                        if typ not in [1,2,3,4,5,6,7,8,11]:
-                            raise
-                        ammount = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
-                        name = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
-                        date = datetime.now(timezone(timedelta(hours=+8))).strftime("%Y_%m_%d")
-                        firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7],[{"Name": name, "Ammount": ammount, "Type": typ, "Date": date}])
-                        firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
-                        firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
-                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',False)
-                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount',False)
-                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',False)
-                        lma.reply_message(f'項目名稱:{name} 金額:{ammount} 類別:{typ} 輸入成功', tk, access_token)
-                    except:
-                        lma.reply_message("格式錯誤，請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
-                else:
-                    if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount'):
-                        try:
-                            ammount = float(text)
-                            firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount',ammount)
-                            firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',True)
-                            lma.reply_message("請輸入類別代號\n1飲食 2生活 3居住 4交通 5娛樂 6醫療 7其他 8投資 11收入", tk, access_token)
-                        except:
-                            lma.reply_message("格式錯誤，請輸入金額數字", tk, access_token)
-                    else:
-                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName',text)
-                        firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingAmmount',True)
-                        lma.reply_message("請輸入金額", tk, access_token)
+                accounting(text, client, ID, tk)
             elif firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsHistory'):
-                    try:
-                        if len(text) != 6:
-                            raise
-                        if int(text[:4]) < 1900 or int(text[:4]) > 2399:
-                            raise
-                        if int(text[4:]) < 1 or int(text[4:]) > 12:
-                            raise
-                    except:
-                        lma.reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
-                    summation = account_monthly(client, ID, text[:4]+"_"+text[4:])
-                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他","投資"],summation[0],text[:4]+"年"+text[4:]+"月統計")
-                    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
-                    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
-                    image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
-                    content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"支出總計:"+str(sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg","color": "#FF0000"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(summation[0][0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(summation[0][1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(summation[0][2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(summation[0][3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(summation[0][4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(summation[0][5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(summation[0][6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"投資:"+str(summation[0][7])+"元("+percentages[7]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收入總計:"+str(summation[1])+"元","wrap":True,"weight":"bold","size":"lg","color": "#00FF00"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收支損益:"+str(summation[1]-sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg"}],"alignItems":"center"}]}}]}
-                    firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsHistory',False)
-                    lma.reply_flex_message(text, content, tk, access_token)
+                firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsHistory',False)
+                lma.reply_flex_message(text, account_monthly(client,ID,text,tk), tk, access_token)
             elif firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsReport'):
-                    try:
-                        if len(text) != 6:
-                            raise
-                        if int(text[:4]) < 1900 or int(text[:4]) > 2399:
-                            raise
-                        if int(text[4:]) < 1 or int(text[4:]) > 12:
-                            raise
-                    except:
-                        lma.reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
-                    data = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+text[:4]+"_"+text[4:])
-                    sheet_url = account_detail(text, data)
-                    firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsReport',False)
-                    lma.reply_message("明細已匯出，前往:"+sheet_url, tk, access_token)
+                lma.reply_message(account_detail(text,client,ID,tk), tk, access_token)
             else:
-                if text == '雷達' or text == '雷達回波':
-                    lma.reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-001.png?{time.time_ns()}', tk, access_token)
-                elif text == '衛星雲圖':
-                    lma.reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
-                elif text == '颱風':
-                    typhoon(tk, ID, access_token)
-                elif text == '地震資訊' or text == '地震':
-                    earth_quake(tk, access_token)                           # 爬取地震資訊
-                elif text[0:2] == '畫，' or text[0:2] == '畫,':
-                    image_url = dalle(text[2:])
-                    lma.reply_image(image_url, tk, access_token)
-                elif text[0:2] == '聊，' or text[0:2] == '聊,':
-                    openai_client = OpenAI(api_key=openai_token)
-                    completion = openai_client.chat.completions.create(model="gpt-4-1106-preview", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文(台灣)回覆)"}])
-                    reply_msg = completion.choices[0].message.content
-                    lma.reply_message(reply_msg, tk, access_token)
-                elif text == '扛' or text == '坦':
-                    lma.reply_image(get_meme(), tk, access_token)
-                elif text == '抽':
-                    lma.reply_image(get_beauty(), tk, access_token)
-                elif text in ('牡羊','金牛','雙子','巨蟹','獅子','處女','天秤','天蠍','射手','魔羯','水瓶','雙魚'):
-                    lma.reply_message(get_luck(text), tk, access_token)
-                elif text in ("午餐","晚餐","肚子餓","吃甚麼","吃什麼"):
-                    lma.reply_image(get_food(), tk, access_token)
-                elif text == '!help' or text == '！help':
+                if text == '!help' or text == '！help':
                     reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n午餐,晚餐,肚子餓,吃什麼 - 幫你決定吃什麼\n聊， - GPT-4對話\n畫， - DALL-E-3合成圖片\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音翻譯機翻成繁體中文\n!加密貨幣 - 加密貨幣指令說明\n!氣象 - 氣象指令說明\n!新聞 - 新聞指令說明\n!對話模式 - 對話模式指令說明'
                     lma.reply_message(reply_msg , tk, access_token)
-                elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
-                    lma.reply_message(get_cryptocurrency_market(), tk, access_token)
                 elif text == '!加密貨幣' or text == '！加密貨幣':
                     reply_msg = f'加密貨幣指令說明\n加密貨幣:列表 - 顯示交易對列表\n加密貨幣:<交易對id> - 顯示價格'
                     lma.reply_message(reply_msg , tk, access_token)
@@ -782,6 +765,29 @@ def linebot():
                 elif text == '!對話模式' or text == '！對話模式':
                     reply_msg = f'對話模式指令說明\n開始對話模式 - 開始ChatGPT對話模式\n結束對話模式 - 結束ChatGPT對話模式\n清空對話紀錄 - 在對話模式過程中使用此指令，可讓ChatGPT遺忘先前的對話紀錄'
                     lma.reply_message(reply_msg , tk, access_token)
+                elif text == '雷達' or text == '雷達回波':
+                    lma.reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-001.png?{time.time_ns()}', tk, access_token)
+                elif text == '衛星雲圖':
+                    lma.reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-C0042-002.jpg?{time.time_ns()}', tk, access_token)
+                elif text == '颱風':
+                    typhoon(tk, ID, access_token)
+                elif text == '地震資訊' or text == '地震':
+                    earth_quake(tk, access_token)                           # 爬取地震資訊
+                elif text[0:2] == '畫，' or text[0:2] == '畫,':
+                    lma.reply_image(dalle(text[2:]), tk, access_token)
+                elif text[0:2] == '聊，' or text[0:2] == '聊,':
+                    completion = OpenAI(api_key=openai_token).chat.completions.create(model="gpt-4-1106-preview", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文(台灣)回覆)"}])
+                    lma.reply_message(completion.choices[0].message.content, tk, access_token)
+                elif text == '扛' or text == '坦':
+                    lma.reply_image(get_meme(), tk, access_token)
+                elif text == '抽':
+                    lma.reply_image(get_beauty(), tk, access_token)
+                elif text in ('牡羊','金牛','雙子','巨蟹','獅子','處女','天秤','天蠍','射手','魔羯','水瓶','雙魚'):
+                    lma.reply_message(get_luck(text), tk, access_token)
+                elif text in ("午餐","晚餐","肚子餓","吃甚麼","吃什麼"):
+                    lma.reply_image(get_food(), tk, access_token)
+                elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
+                    lma.reply_message(get_cryptocurrency_market(), tk, access_token)
                 elif text[0:5] == '加密貨幣:' or text == '加密貨幣：':
                     lma.reply_message(cryptocurrency(text[5:]), tk, access_token)
                 elif text[0:6] == '開始對話模式':
@@ -789,30 +795,13 @@ def linebot():
                     firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'messages')
                     lma.reply_message('對話模式已開始', tk, access_token)
                 elif text in ["焦點新聞","國際新聞","商業新聞","科技新聞","體育新聞","娛樂新聞"]:
-                    if text == "焦點新聞":
-                        content = news("焦點新聞")
-                    elif text == "國際新聞":
-                        content = news("國際新聞")
-                    elif text == "商業新聞":
-                        content = news("商業新聞")
-                    elif text == "科技新聞":
-                        content = news("科技新聞")
-                    elif text == "體育新聞":
-                        content = news("體育新聞")
-                    elif text == "娛樂新聞":
-                        content = news("娛樂新聞")
-                    lma.reply_flex_message(text, content, tk, access_token)
+                    lma.reply_flex_message(text, news(text), tk, access_token)
                 elif text == "記帳":
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingName',True)
                     lma.reply_message('請輸入項目名稱', tk, access_token)
                 elif text == "月帳":
-                    summation = account_monthly(client, ID, datetime.now(timezone(timedelta(hours=+8))).strftime("%Y_%m_%d"))
-                    percentages = pie_chart(["飲食","生活","居住","交通","娛樂","醫療","其他","投資"],summation[0],"本月統計")
-                    gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
-                    gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
-                    image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
-                    content = {"type":"carousel","contents":[{"type":"bubble","hero":{"type":"image","size":"full","aspectRatio":"20:18","aspectMode":"cover","url":image_url},"body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"支出總計:"+str(sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg","color": "#FF0000"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"飲食:"+str(summation[0][0])+"元("+percentages[0]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"生活:"+str(summation[0][1])+"元("+percentages[1]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"居住:"+str(summation[0][2])+"元("+percentages[2]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"交通:"+str(summation[0][3])+"元("+percentages[3]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"娛樂:"+str(summation[0][4])+"元("+percentages[4]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"醫療:"+str(summation[0][5])+"元("+percentages[5]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"其他:"+str(summation[0][6])+"元("+percentages[6]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"投資:"+str(summation[0][7])+"元("+percentages[7]+")","wrap":True,"weight":"bold","size":"sm"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收入總計:"+str(summation[1])+"元","wrap":True,"weight":"bold","size":"lg","color": "#00FF00"}],"alignItems":"center"},{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","text":"收支損益:"+str(summation[1]-sum(summation[0]))+"元","wrap":True,"weight":"bold","size":"lg"}],"alignItems":"center"}]}}]}
-                    lma.reply_flex_message(text, content, tk, access_token)
+                    reply_msg = account_monthly(client, ID, datetime.now(timezone(timedelta(hours=+8))).strftime("%Y%m"), tk)
+                    lma.reply_flex_message(text, reply_msg, tk, access_token)
                 elif text == "歷史":
                     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsHistory',True)
                     lma.reply_message('請輸入年月\nex.202307', tk, access_token)
@@ -821,9 +810,6 @@ def linebot():
                     lma.reply_message('請輸入年月\nex.202307', tk, access_token)
                 else:
                     pass
-        if type=='audio':
-            reply_msg = interpretation(speech_to_text(json_data['events'][0]['message']['id']), tk)
-            lma.reply_multi_message(reply_msg, tk, access_token)
         if type=='sticker':
             logger.info('sticker')
         if type=='video':
