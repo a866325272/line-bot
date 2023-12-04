@@ -180,7 +180,7 @@ def news(cat: str):
     soup = BeautifulSoup(web.text, "html.parser")
     tags = soup.select(".IBr9hb a")
     links = []
-    for i in range(5):
+    for i in range(0,10,2):
         url = "https://news.google.com/"+tags[i]['href'][2::]
         web = requests.get(url, allow_redirects=False)
         links.append(web.headers['Location'])
@@ -480,7 +480,7 @@ def forecast(address):
         return msg  # 如果取資料有發生錯誤，直接回傳 msg
 
 # 颱風預測函式
-def typhoon(tk, ID, access_token):
+def typhoon(tk: str, ID: str):
     lma.push_message("颱風資訊擷取中，請稍候...", ID, access_token)
     '''# 擷取颱風路徑錄影
     with sync_playwright() as playwright:
@@ -636,7 +636,7 @@ def current_weather(address):
         return msg    # 如果取資料有發生錯誤，直接回傳 msg
 
 # 地震資訊函式
-def earth_quake(tk, access_token):
+def earth_quake(tk: str):
     msg = ['找不到地震資訊','https://example.com/demo.jpg']             # 預設回傳的訊息
     try:
         url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={cwa_token}'
