@@ -729,7 +729,7 @@ def linebot():
             pass
         type = json_data['events'][0]['message']['type']        # 取得 LINe 收到的訊息類型
         if type=='location':
-            address = json_data['events'][0]['message']['address'].replace('台','臺')   # 取出地址資訊，並將「台」換成「臺」
+            address = json_data['events'][0]['message']['address'].replace('台','臺').replace('区','區')   # 取出地址資訊，並將「台」換成「臺」
             lma.reply_message(f'{current_weather(address)}\n\n{aqi(address)}\n\n{forecast(address)}', tk, access_token)
         if type=='audio':
             reply_msg = interpretation(speech_to_text(json_data['events'][0]['message']['id']), tk)
@@ -772,7 +772,7 @@ def linebot():
                 elif text == '颱風':
                     typhoon(tk, ID, access_token)
                 elif text == '地震資訊' or text == '地震':
-                    earth_quake(tk, access_token)                           # 爬取地震資訊
+                    earth_quake(tk)                           # 爬取地震資訊
                 elif text[0:2] == '畫，' or text[0:2] == '畫,':
                     lma.reply_image(dalle(text[2:]), tk, access_token)
                 elif text[0:2] == '聊，' or text[0:2] == '聊,':
