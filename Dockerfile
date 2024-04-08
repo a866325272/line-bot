@@ -20,7 +20,7 @@ ENV GOOGLE_APPLICATION_CREDENTIALS ${GOOGLE_APPLICATION_CREDENTIALS}
 ENV LOG_PATH ${LOG_PATH}
 
 RUN pip3 install -r requirements.txt
-RUN playwright install webkit --with-deps
+RUN playwright install firefox --with-deps
 RUN apt-get update && apt-get install -y fonts-wqy-zenhei ffmpeg
 RUN rm -rf /root/.cache/matplotlib/*
 COPY app.py app.py
