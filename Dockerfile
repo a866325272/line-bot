@@ -1,5 +1,4 @@
 FROM python:3.9.16-slim
-RUN mkdir -p /var/log/line-bot
 WORKDIR /app
 COPY requirements.txt requirements.txt
 
@@ -19,10 +18,12 @@ ENV OPENAI_TOKEN ${OPENAI_TOKEN}
 ENV GOOGLE_APPLICATION_CREDENTIALS ${GOOGLE_APPLICATION_CREDENTIALS}
 ENV LOG_PATH ${LOG_PATH}
 
-RUN pip3 install -r requirements.txt
-RUN playwright install firefox --with-deps
-RUN apt-get update && apt-get install -y fonts-wqy-zenhei ffmpeg
-RUN rm -rf /root/.cache/matplotlib/*
+RUN pip3 install -r requirements.txt &&\
+    playwright install firefox --with-deps &&\
+    apt-get update && apt-get install -y fonts-wqy-zenhei ffmpeg &&\
+    rm -rf /root/.cache/matplotlib/* &&\
+    mkdir /app/videos &&\
+    mkdir -p /var/log/line-bot
 COPY app.py app.py
 COPY firestore.py firestore.py
 COPY gcs.py gcs.py
