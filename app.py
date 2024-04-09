@@ -480,7 +480,7 @@ def forecast(address):
         return msg  # 如果取資料有發生錯誤，直接回傳 msg
 
 # 網頁截圖錄影
-def create_snapshot_video(sites, framerate, length, width, height):
+def create_snapshot_video(sites, framerate, duration, width, height):
     for output_name, url in sites:
         # take screenshot using playwright
         with sync_playwright() as playwright:
@@ -489,15 +489,14 @@ def create_snapshot_video(sites, framerate, length, width, height):
             page = context.new_page()
             page.goto(url)
 
-            # Number of frames to capture
-            num_frames = framerate*length
+            num_frames = framerate*duration
+            frame_interval = 1/framerate
+            frame_count = 0
 
-            # Delay between frames in seconds
-            frame_delay = 1/framerate
-
-            for i in range(num_frames):
-                page.screenshot(path=f'pics/{output_name}_{i:03d}.png')
-                time.sleep(frame_delay)
+            while frame_count < num_frames:
+                if time.time() % frame_interval < 0.03:
+                    page.screenshot(path=f'pics/{output_name}_{frame_count:03d}.png')
+                    frame_count += 1
             context.close()
 
         # Convert the screenshots into a video using FFmpeg
@@ -517,9 +516,11 @@ def create_snapshot_video(sites, framerate, length, width, height):
 def typhoon(tk: str, ID: str):
     #lma.push_message("颱風資訊擷取中，請稍候...", ID, access_token)
     try:
+        ncdr_url = 'https://watch.ncdr.nat.gov.tw/watch_tracks_pro'
+        windy_url = 'https://www.windy.com/?24.939,121.542,5'
         sites_to_process = [
-            ('typhoon', 'https://watch.ncdr.nat.gov.tw/watch_tracks_pro'),
-            ('windy', 'https://www.windy.com/?24.939,121.542,5')
+            ('typhoon', ncdr_url),
+            ('windy', windy_url)
         ]
 
         sites_grouped = [[sites_to_process[i]] for i in range(len(sites_to_process))]
@@ -541,7 +542,12 @@ def typhoon(tk: str, ID: str):
         gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.png')
         gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/windy{tk}.mp4')
         gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/windy{tk}.png')
-        reply_msg={'type': 'video','originalContentUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4','previewImageUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png'},{'type': 'video','originalContentUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.mp4','previewImageUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.png'}
+        ncdr_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png'
+        ncdr_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4'
+        windy_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.png'
+        windy_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.mp4'
+        msg = f'NCDR路徑預測: {ncdr_url}\nWindy風地圖: {windy_url}'
+        reply_msg={'type': 'text','text': msg},{'type': 'video','originalContentUrl': ncdr_video,'previewImageUrl': ncdr_img},{'type': 'video','originalContentUrl': windy_video,'previewImageUrl': windy_img}
         lma.reply_multi_message(reply_msg, tk, access_token)
     except Exception as e:
         logger.warning('exception:'+str(e))
@@ -629,11 +635,12 @@ def current_weather(address):
         return msg    # 如果取資料有發生錯誤，直接回傳 msg
 
 # 地震資訊函式
-def earth_quake(tk: str):
-    msg = ['找不到地震資訊','https://example.com/demo.jpg']             # 預設回傳的訊息
+def earthquake(tk: str):
+    msg = ['找不到地震資訊','https://example.com/demo.jpg','https://example.com/demo.mp4','https://example.com/demo.jpg']             # 預設回傳的訊息
     try:
+        earthquake_yturl = 'https://www.youtube.com/embed/Owke6Quk7T0?autoplay=1'
         sites_to_process = [
-            ('earthquake', 'https://www.youtube.com/embed/Owke6Quk7T0?autoplay=1')
+            ('earthquake', earthquake_yturl)
         ]
 
         sites_grouped = [[sites_to_process[i]] for i in range(len(sites_to_process))]
@@ -648,7 +655,7 @@ def earth_quake(tk: str):
             p.join()
 
         gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/earthquake.mp4", f'earthquake/earthquake{tk}.mp4')
-        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/earthquake_018.png", f'earthquake/earthquake{tk}.png')
+        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/earthquake_024.png", f'earthquake/earthquake{tk}.png')
         gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'earthquake/earthquake{tk}.mp4')
         gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'earthquake/earthquake{tk}.png')
 
@@ -675,10 +682,12 @@ def earth_quake(tk: str):
             img2 = i['ReportImageURI']                                  # 地震圖
             break                                                       # 取出第一筆資料後就 break
         if eq_time > eq_time2:                                          # 判斷最近一筆時間資料回傳
-            msg = [f'地震報告\n{loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。', img]
+            msg = [f'地震即時監控: {earthquake_yturl}\n地震報告: {loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。', img]
         else:
-            msg = [f'地震報告\n{loc2}，芮氏規模 {val2} 級，深度 {dep2} 公里，發生時間 {eq_time2}。', img2]
-        reply_msg = {"type": "text","text": "地震速報、強震即時警報"},{'type': 'video','originalContentUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/earthquake/earthquake{tk}.mp4','previewImageUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/earthquake/earthquake{tk}.png'},{"type": "text","text": msg[0]},{'type': 'image','originalContentUrl': msg[1],'previewImageUrl': msg[1]}
+            msg = [f'地震即時監控: {earthquake_yturl}\n地震報告: {loc2}，芮氏規模 {val2} 級，深度 {dep2} 公里，發生時間 {eq_time2}。', img2]
+        earthquake_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/earthquake/earthquake{tk}.png'
+        earthquake_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/earthquake/earthquake{tk}.mp4'
+        reply_msg = {"type": "text","text": msg[0]},{'type': 'image','originalContentUrl': earthquake_img,'previewImageUrl': earthquake_img},{'type': 'video','originalContentUrl': earthquake_video,'previewImageUrl': earthquake_img},{'type': 'image','originalContentUrl': msg[1],'previewImageUrl': msg[1]}
         lma.reply_multi_message(reply_msg, tk, access_token)
         return
     except Exception as e:
@@ -786,7 +795,7 @@ def linebot():
                 elif text == '颱風':
                     typhoon(tk, ID)
                 elif text == '地震資訊' or text == '地震':
-                    earth_quake(tk)                           # 爬取地震資訊
+                    earthquake(tk)                           # 爬取地震資訊
                 elif text[0:2] == '畫，' or text[0:2] == '畫,':
                     lma.reply_image(dalle(text[2:]), tk, access_token)
                 elif text[0:2] == '聊，' or text[0:2] == '聊,':
