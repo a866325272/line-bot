@@ -210,7 +210,7 @@ def chatmode(text: str, client: str, ID: str, tk: str):
         logger.info(messages)
         openai_client = OpenAI(api_key=openai_token)
         chat = openai_client.chat.completions.create(
-            model="gpt-4-turbo-preview", messages=messages
+            model="gpt-4o", messages=messages
         )
         reply = chat.choices[0].message.content
         firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "assistant", "content": reply}])
@@ -721,7 +721,7 @@ def interpretation(orig_txt: str, tk):
         return audio_duration
 
     openai_client = OpenAI(api_key=openai_token)
-    completion = openai_client.chat.completions.create(model="gpt-4-turbo-preview", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+orig_txt}])
+    completion = openai_client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+orig_txt}])
     msg = completion.choices[0].message.content
     audio_duration = text_to_speech("cmn-TW-Wavenet-C",msg)
     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./text-to-speech.wav", f'text-to-speech/text-to-speech{tk}.wav')
@@ -799,7 +799,7 @@ def linebot():
                 elif text[0:2] == '畫，' or text[0:2] == '畫,':
                     lma.reply_image(dalle(text[2:]), tk, access_token)
                 elif text[0:2] == '聊，' or text[0:2] == '聊,':
-                    completion = OpenAI(api_key=openai_token).chat.completions.create(model="gpt-4-turbo-preview", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文(台灣)回覆)"}])
+                    completion = OpenAI(api_key=openai_token).chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文(台灣)回覆)"}])
                     lma.reply_message(completion.choices[0].message.content, tk, access_token)
                 elif text == '扛' or text == '坦':
                     lma.reply_image(get_meme(), tk, access_token)
