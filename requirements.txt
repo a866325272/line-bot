@@ -10,6 +10,6 @@ python-dotenv==1.0.0
 google-cloud-texttospeech==2.14.1
 google-cloud-storage==2.9.0
 matplotlib==3.7.1
-gspread==5.10.0
+gspread==6.1.2
 pytest-playwright==0.4.2
 pydub==0.25.1
