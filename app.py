@@ -10,15 +10,17 @@ from matplotlib import pyplot as plt
 from playwright.sync_api import sync_playwright
 from openai import OpenAI
 from pydub import AudioSegment
+from operator import itemgetter
 import google.cloud.texttospeech as tts
 import datetime as dt
-import requests, json, time, statistics, numpy, os, random, logging, subprocess, multiprocessing
+import requests, json, time, statistics, numpy, os, random, logging, subprocess, multiprocessing, googlemaps
 load_dotenv()
 epa_token = os.getenv('EPA_TOKEN')
 cwa_token = os.getenv('CWA_TOKEN')
 access_token = os.getenv('ACCESS_TOKEN')
 secret = os.getenv('SECRET')
 openai_token = os.getenv('OPENAI_TOKEN')
+gmap_api_key = os.getenv('GMAP_API_KEY')
 log_path = os.getenv('LOG_PATH')
 import firestore    # firestore operations
 import gcs          # gcs operations
@@ -35,6 +37,47 @@ rotate_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
+
+# 搜尋餐廳
+def find_nearby_restaurants(place_name):
+    # Initialize the Google Maps client
+    gmaps = googlemaps.Client(key=gmap_api_key)
+    
+    # Geocode the place name to get latitude and longitude
+    geocode_result = gmaps.geocode(place_name, language='zh-TW')
+    if not geocode_result:
+        return f"找不到'{place_name}'地點"
+    
+    location = geocode_result[0]['geometry']['location']
+    lat, lng = location['lat'], location['lng']
+    
+    # Search for nearby restaurants
+    places_result = gmaps.places_nearby(location=(lat, lng), radius=1000, type='restaurant', language='zh-TW')
+    
+    # Check if any restaurants were found
+    if not places_result['results']:
+        return f"'{place_name}'地點附近找不到餐廳"
+    
+    # Extract restaurant details and sort by rating
+    restaurants = places_result['results']
+    sorted_restaurants = sorted(restaurants, key=itemgetter('rating'), reverse=True)
+
+    # Limit the results to 5
+    top_restaurants = sorted_restaurants[:5]
+
+    # Format the output
+    ranked_restaurants = []
+    short_links = []
+    for restaurant in top_restaurants:
+        name = restaurant.get('name')
+        rating = restaurant.get('rating', 'N/A')
+        address = restaurant.get('vicinity', 'N/A')
+        place_id = restaurant.get('place_id')
+        google_maps_url = f"https://www.google.com/maps/search/?api=1&query=Google&query_place_id={place_id}"
+        short_links.append(requests.request("GET", "https://tinyurl.com/api-create.php?url="+google_maps_url).text)
+        ranked_restaurants.append(f"{name} (評分: {rating}) - {address}\n")
+    content = {"type":"carousel","contents":[{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":ranked_restaurants[0]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[0]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":ranked_restaurants[1]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[1]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":ranked_restaurants[2]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[2]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":ranked_restaurants[3]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[3]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":ranked_restaurants[4]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[4]},"height": "sm"}]}}]}
+    return content
 
 # 記帳
 def accounting(text: str, client: str, ID: str, tk: str):
@@ -199,7 +242,7 @@ def news(cat: str):
         title_end = req.text.find("</title>", title_start)
         title = req.text[title_start + 7:title_end].strip()
         titles.append(title)
-    content = {"type":"carousel","contents":[{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[0]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[0]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[1]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":links[1]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[2]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[2]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[3]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[3]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[4]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[4]},"height": "sm"}]}}]}
+    content = {"type":"carousel","contents":[{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[0]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[0]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[1]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[1]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[2]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[2]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[3]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[3]},"height": "sm"}]}},{"type":"bubble","size": "micro","body":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"text","wrap":True,"weight":"bold","size":"sm","text":titles[4]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[{"type":"button","style":"primary","action":{"type":"uri","label":"前往連結","uri":short_links[4]},"height": "sm"}]}}]}
     return content
 
 # 對話模式
@@ -771,7 +814,7 @@ def linebot():
                 lma.reply_message(account_detail(text,client,ID,tk), tk, access_token)
             else:
                 if text == '!help' or text == '！help':
-                    reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n午餐,晚餐,肚子餓,吃什麼 - 幫你決定吃什麼\n聊， - GPT-4對話\n畫， - DALL-E-3合成圖片\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音翻譯機翻成繁體中文\n!加密貨幣 - 加密貨幣指令說明\n!氣象 - 氣象指令說明\n!新聞 - 新聞指令說明\n!對話模式 - 對話模式指令說明'
+                    reply_msg = f'指令說明\n扛 或 坦 - 打了你就知道啦~~\n抽 - 抽美女帥哥圖\n午餐,晚餐,肚子餓,吃什麼 - 幫你決定吃什麼\n餐廳<地點> - <地點>附近一公里餐廳排名\n聊， - GPT-4對話\n畫， - DALL-E-3合成圖片\n星座 例如:處女  - 回報運勢\n語音訊息 - 語音翻譯機翻成繁體中文\n!加密貨幣 - 加密貨幣指令說明\n!氣象 - 氣象指令說明\n!新聞 - 新聞指令說明\n!對話模式 - 對話模式指令說明'
                     lma.reply_message(reply_msg , tk, access_token)
                 elif text == '!加密貨幣' or text == '！加密貨幣':
                     reply_msg = f'加密貨幣指令說明\n加密貨幣:列表 - 顯示交易對列表\n加密貨幣:<交易對id> - 顯示價格'
@@ -809,6 +852,9 @@ def linebot():
                     lma.reply_message(get_luck(text), tk, access_token)
                 elif text in ("午餐","晚餐","肚子餓","吃甚麼","吃什麼"):
                     lma.reply_image(get_food(), tk, access_token)
+                elif text[0:2] == '餐廳':
+                    #lma.reply_message(find_nearby_restaurants(text[2:]), tk, access_token)
+                    lma.reply_flex_message(text, find_nearby_restaurants(text[2:]), tk, access_token)
                 elif text == '加密貨幣:列表' or text == '加密貨幣：列表':
                     lma.reply_message(get_cryptocurrency_market(), tk, access_token)
                 elif text[0:5] == '加密貨幣:' or text == '加密貨幣：':

@@ -13,3 +13,4 @@ matplotlib==3.7.1
 gspread==6.1.2
 pytest-playwright==0.4.2
 pydub==0.25.1
+googlemaps==4.10.0
