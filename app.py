@@ -46,7 +46,8 @@ def find_nearby_restaurants(place_name):
     # Geocode the place name to get latitude and longitude
     geocode_result = gmaps.geocode(place_name, language='zh-TW')
     if not geocode_result:
-        return f"找不到'{place_name}'地點"
+        content = {"type":"bubble","body":{"type":"box","layout":"vertical","contents":[{"type":"text","text":f"找不到'{place_name}'地點"}]}}
+        return content
 
     location = geocode_result[0]['geometry']['location']
     lat, lng = location['lat'], location['lng']
@@ -56,7 +57,8 @@ def find_nearby_restaurants(place_name):
 
     # Check if any restaurants were found
     if not places_result['results']:
-        return f"'{place_name}'地點附近找不到餐廳"
+        content = {"type":"bubble","body":{"type":"box","layout":"vertical","contents":[{"type":"text","text":f"'{place_name}'地點附近找不到餐廳"}]}}
+        return content
 
     # Extract restaurant details and sort by rating
     restaurants = places_result['results']
