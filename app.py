@@ -42,22 +42,22 @@ logger.addHandler(console_handler)
 def find_nearby_restaurants(place_name):
     # Initialize the Google Maps client
     gmaps = googlemaps.Client(key=gmap_api_key)
-    
+
     # Geocode the place name to get latitude and longitude
     geocode_result = gmaps.geocode(place_name, language='zh-TW')
     if not geocode_result:
         return f"找不到'{place_name}'地點"
-    
+
     location = geocode_result[0]['geometry']['location']
     lat, lng = location['lat'], location['lng']
-    
+
     # Search for nearby restaurants
     places_result = gmaps.places_nearby(location=(lat, lng), radius=1000, type='restaurant', language='zh-TW')
-    
+
     # Check if any restaurants were found
     if not places_result['results']:
         return f"'{place_name}'地點附近找不到餐廳"
-    
+
     # Extract restaurant details and sort by rating
     restaurants = places_result['results']
     sorted_restaurants = sorted(restaurants, key=itemgetter('rating'), reverse=True)
