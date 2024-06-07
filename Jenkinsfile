@@ -21,6 +21,7 @@ pipeline {
                 --build-arg  SECRET=${SECRET} \
                 --build-arg  GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS} \
                 --build-arg  LOG_PATH=${LOG_PATH} \
+                --build-arg  GMAP_API_KEY=${GMAP_API_KEY} \
                 .'''
             }
         }

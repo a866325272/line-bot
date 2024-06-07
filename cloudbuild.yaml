@@ -23,6 +23,8 @@ steps:
       - 'OPENAI_TOKEN=$_OPENAI_TOKEN'
       - '--build-arg'
       - 'LOG_PATH=$_LOG_PATH'
+      - '--build-arg'
+      - 'GMAP_API_KEY=$_GMAP_API_KEY'
       - '-f'
       - Dockerfile
       - .      
