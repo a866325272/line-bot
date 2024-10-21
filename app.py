@@ -117,10 +117,11 @@ def accounting(text: str, client: str, ID: str, tk: str):
 # 月帳明細
 def account_detail(text: str, client: str, ID: str, tk: str) -> str:
     def make_sheet(text: str, data):
-        headers = list(data[0].keys())
+        headers = ["Type","Ammount","Date","Name"]
         values =[]
         for item in data:
-            values.append(list(item.values()))
+            row = [item[key] for key in headers]
+            values.append(row)
         gss.delete_worksheet_if_exist('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
         gss.create_worksheet('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
         gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],[headers])
