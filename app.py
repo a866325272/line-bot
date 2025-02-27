@@ -420,7 +420,7 @@ def aqi(address):
     city_list, site_list ={}, {}
     msg = '找不到空氣品質資訊。'
     try:
-        url = f'https://data.epa.gov.tw/api/v2/aqx_p_432?limit=1000&api_key={epa_token}&sort=ImportDate%20desc&format=json'
+        url = f'https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key={epa_token}&limit=1000&sort=ImportDate%20desc&format=JSON'
         a_data = requests.get(url)             # 使用 get 方法透過空氣品質指標 API 取得內容
         a_data_json = a_data.json()            # json 格式化訊息內容
         for i in a_data_json['records']:       # 依序取出 records 內容的每個項目
@@ -485,41 +485,23 @@ def forecast(address):
                 url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/{json_api[i]}?Authorization={cwa_token}&elementName=WeatherDescription'
                 f_data = requests.get(url)  # 取得主要縣市裡各個區域鄉鎮的氣象預報
                 f_data_json = f_data.json() # json 格式化訊息內容
-                location = f_data_json['records']['locations'][0]['location']    # 取得預報內容
+                location = f_data_json['records']['Locations'][0]['Location']    # 取得預報內容
                 city = i
                 break
         for i in location:
-            area = i['locationName']   # 取得鄉鎮區域名稱
-            #starttime = i['weatherElement'][0]['time'][0]['startTime']
-            endtime = i['weatherElement'][0]['time'][0]['endTime']
-            if endtime[11] == '0' and endtime[12] == '6':
-                endtime = endtime[:11] + "0時"
-            if endtime[11] == '1' and endtime[12] == '8':
-                endtime = endtime[:11] + "12時"
-            wd = i['weatherElement'][0]['time'][0]['elementValue'][0]['value']  # 綜合描述
-            #starttime1 = i['weatherElement'][0]['time'][1]['startTime']
-            endtime1 = i['weatherElement'][0]['time'][1]['endTime']
-            if endtime1[11] == '0' and endtime1[12] == '6':
-                endtime1 = endtime1[:11] + "0時"
-            if endtime1[11] == '1' and endtime1[12] == '8':
-                endtime1 = endtime1[:11] + "12時"
-            wd1 = i['weatherElement'][0]['time'][1]['elementValue'][0]['value']  # 綜合描述
-            #starttime2 = i['weatherElement'][0]['time'][2]['startTime']
-            #endtime2 = i['weatherElement'][0]['time'][2]['endTime']
-            #if endtime2[11] == '0' and endtime2[12] == '6':
-            #    endtime2 = endtime2[:11] + "0時"
-            #if endtime2[11] == '1' and endtime2[12] == '8':
-            #    endtime2 = endtime2[:11] + "12時"
-            #wd2 = i['weatherElement'][0]['time'][2]['elementValue'][0]['value']  # 綜合描述
-            #starttime3 = i['weatherElement'][0]['time'][3]['startTime']
-            #endtime3 = i['weatherElement'][0]['time'][3]['endTime']
-            #if endtime3[11] == '0' and endtime3[12] == '6':
-            #    endtime3 = endtime3[:11] + "0時"
-            #if endtime3[11] == '1' and endtime3[12] == '8':
-            #    endtime3 = endtime3[:11] + "12時"
-            #wd3 = i['weatherElement'][0]['time'][3]['elementValue'][0]['value']  # 綜合描述
+            area = i['LocationName']   # 取得鄉鎮區域名稱
+            starttime = i['WeatherElement'][-1]['Time'][0]['StartTime']
+            endtime = i['WeatherElement'][-1]['Time'][0]['EndTime']
+            starttime = starttime[5:10] + " " + starttime[11:16]
+            endtime = endtime[5:10] + " " + endtime[11:16]
+            wd = i['WeatherElement'][-1]['Time'][0]['ElementValue'][0]['WeatherDescription']  # 綜合描述
+            starttime1 = i['WeatherElement'][-1]['Time'][1]['StartTime']
+            endtime1 = i['WeatherElement'][-1]['Time'][1]['EndTime']
+            starttime1 = starttime1[5:10] + " " + starttime1[11:16]
+            endtime1 = endtime1[5:10] + " " + endtime1[11:16]
+            wd1 = i['WeatherElement'][-1]['Time'][1]['ElementValue'][0]['WeatherDescription']  # 綜合描述
             if area in address:           # 如果使用者的地址包含鄉鎮區域名稱
-                msg = city+area+f'天氣預報 :\n{endtime}\n{wd}\n\n{endtime1}\n{wd1}' # 將 msg 換成對應的預報資訊
+                msg = city+area+f'天氣預報 :\n{starttime} ~ {endtime}\n{wd}\n\n{starttime1} ~ {endtime1}\n{wd1}' # 將 msg 換成對應的預報資訊
                 break
         return msg  # 回傳 msg
     except:
