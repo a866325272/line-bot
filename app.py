@@ -827,8 +827,8 @@ def linebot():
                 elif text[0:2] == '畫，' or text[0:2] == '畫,':
                     lma.reply_image(dalle(text[2:]), tk, access_token)
                 elif text[0:2] == '聊，' or text[0:2] == '聊,':
-                    completion = OpenAI(api_key=openai_token).chat.completions.create(model="gpt-4.1", messages=[{"role": "user", "content": text[2:]+"(請使用繁體中文(台灣)回覆)"}])
-                    lma.reply_message(completion.choices[0].message.content, tk, access_token)
+                    response = OpenAI(api_key=openai_token).responses.create(model="gpt-4.1", input=text[2:], tools=[{"type": "web_search"}]) #+"(請使用繁體中文(台灣)回覆)"}])
+                    lma.reply_message(response.output_text, tk, access_token)
                 elif text == '扛' or text == '坦':
                     lma.reply_image(get_meme(), tk, access_token)
                 elif text == '抽':
