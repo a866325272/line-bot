@@ -12,8 +12,9 @@ from openai import OpenAI
 from pydub import AudioSegment
 from operator import itemgetter
 import google.cloud.texttospeech as tts
+from sentry_sdk.integrations.flask import FlaskIntegration
 import datetime as dt
-import requests, json, time, statistics, numpy, os, random, logging, subprocess, multiprocessing, googlemaps
+import requests, json, time, statistics, numpy, os, random, logging, subprocess, multiprocessing, googlemaps, sentry_sdk
 load_dotenv()
 epa_token = os.getenv('EPA_TOKEN')
 cwa_token = os.getenv('CWA_TOKEN')
@@ -27,6 +28,15 @@ import gcs          # gcs operations
 import gss          # google spreadsheet operations
 import lma          # line message api operations
 
+# sentry init
+sentry_sdk.init(
+    dsn="https://a4f936f1b7fe5cc335062e0a3ecd7b4b@sentry-test.shoplinetest.com/4",
+    integrations=[FlaskIntegration()],
+    # Add data like request headers and IP for users,
+    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+    send_default_pii=True,
+)
+
 # log config
 logger = logging.getLogger('')
 logger.setLevel(logging.INFO)
@@ -37,6 +47,11 @@ rotate_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
 logger.addHandler(rotate_handler)
 logger.addHandler(console_handler)
+
+# exception handler
+def exception_handler(e):
+    logger.warning('exception:'+str(e))
+    sentry_sdk.capture_exception(e)
 
 # 搜尋餐廳
 def find_nearby_restaurants(place_name):
@@ -578,7 +593,7 @@ def typhoon(tk: str, ID: str):
         reply_msg={'type': 'text','text': msg},{'type': 'video','originalContentUrl': ncdr_video,'previewImageUrl': ncdr_img},{'type': 'video','originalContentUrl': windy_video,'previewImageUrl': windy_img}
         lma.reply_multi_message(reply_msg, tk, access_token)
     except Exception as e:
-        logger.warning('exception:'+str(e))
+        exception_handler(e)
         return
 
 # 目前天氣函式
@@ -659,7 +674,7 @@ def current_weather(address):
         msg = msg_content(area_list2_avg, msg)   # 將訊息改為「鄉鎮區域」
         return msg    # 回傳 msg
     except Exception as e:
-        logger.warning('exception:'+str(e))
+        exception_handler(e)
         return msg    # 如果取資料有發生錯誤，直接回傳 msg
 
 # 地震資訊函式
@@ -719,7 +734,7 @@ def earthquake(tk: str):
         lma.reply_multi_message(reply_msg, tk, access_token)
         return
     except Exception as e:
-        logger.warning('exception:'+str(e))
+        exception_handler(e)
         return
 
 # 語音翻譯函式
@@ -871,7 +886,7 @@ def linebot():
         if type=='image':
             logger.info('image')
     except Exception as e:
-        logger.warning('exception:'+str(e))                     # 如果發生錯誤，印出error
+        exception_handler(e)
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
 
 if __name__ == "__main__":
