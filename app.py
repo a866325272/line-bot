@@ -131,16 +131,16 @@ def accounting(text: str, client: str, ID: str, tk: str):
 
 # 月帳明細
 def account_detail(text: str, client: str, ID: str, tk: str) -> str:
-    def make_sheet(text: str, data):
+    def make_sheet(spreadsheet_id: str, text: str, data):
         headers = ["Type","Ammount","Date","Name"]
         values =[]
         for item in data:
             row = [item[key] for key in headers]
             values.append(row)
-        gss.delete_worksheet_if_exist('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
-        gss.create_worksheet('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:])
-        gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],[headers])
-        gss.append_data('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],values)
+        gss.delete_worksheet_if_exist(spreadsheet_id,text[:4]+"_"+text[4:])
+        gss.create_worksheet(spreadsheet_id,text[:4]+"_"+text[4:])
+        gss.append_data(spreadsheet_id,text[:4]+"_"+text[4:],[headers])
+        gss.append_data(spreadsheet_id,text[:4]+"_"+text[4:],values)
         if int(text[4:]) == 1:
             old_table = str(int(text[:4])-1)+"_12"
         elif int(text[4:]) in [11,12]:
@@ -161,8 +161,8 @@ def account_detail(text: str, client: str, ID: str, tk: str) -> str:
         ["11","收入",'=SUMIF($A$2:$A,"=11",$B$2:$B)',"",f'=G12-{old_table}!G12'],
         ["","支出","=SUM(G2:G9)","",f'=G13-{old_table}!G13'],
         ["","損益","=G12-SUM(G2:G9)","",""]]
-        sheet_url = gss.update_table('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],update_table,"E1")
-        gss.set_format_percent('1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k',text[:4]+"_"+text[4:],'H2:H9')
+        sheet_url = gss.update_table(spreadsheet_id,text[:4]+"_"+text[4:],update_table,"E1")
+        gss.set_format_percent(spreadsheet_id,text[:4]+"_"+text[4:],'H2:H9')
         return sheet_url
 
     try:
@@ -174,8 +174,12 @@ def account_detail(text: str, client: str, ID: str, tk: str) -> str:
             raise
     except:
         lma.reply_message("格式錯誤，請輸入年月\nex.202307", tk, access_token)
+    if ID == "C047bb57b021d44a237a8dc1a60ba497d":
+        spreadsheet_id = "1yUd_x3r0Jv1dm90p8BZIYQxRkgwm2Rrp6ZAduHG2YDY"
+    else:
+        spreadsheet_id = "1gDQm8KEvNmO5zlzKoCkCbIZ-7BGJUm9NU7aBKxGkn5k"
     data = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'Accounts_'+text[:4]+"_"+text[4:])
-    sheet_url = make_sheet(text, data)
+    sheet_url = make_sheet(spreadsheet_id, text, data)
     firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsReport',False)
     return "明細已匯出，前往:"+sheet_url
 
@@ -271,7 +275,7 @@ def chatmode(text: str, client: str, ID: str, tk: str):
         logger.info(messages)
         openai_client = OpenAI(api_key=openai_token)
         chat = openai_client.chat.completions.create(
-            model="gpt-4.1", messages=messages
+            model="gpt-5", messages=messages
         )
         reply = chat.choices[0].message.content
         firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'messages',[{"role": "assistant", "content": reply}])
@@ -764,7 +768,7 @@ def interpretation(orig_txt: str, tk):
         return audio_duration
 
     openai_client = OpenAI(api_key=openai_token)
-    completion = openai_client.chat.completions.create(model="gpt-4.1", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+orig_txt}])
+    completion = openai_client.chat.completions.create(model="gpt-5", messages=[{"role": "user", "content": "請將以下文字翻譯成繁體中文。\n"+orig_txt}])
     msg = completion.choices[0].message.content
     audio_duration = text_to_speech("cmn-TW-Wavenet-C",msg)
     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./text-to-speech.wav", f'text-to-speech/text-to-speech{tk}.wav')
@@ -842,7 +846,7 @@ def linebot():
                 elif text[0:2] == '畫，' or text[0:2] == '畫,':
                     lma.reply_image(dalle(text[2:]), tk, access_token)
                 elif text[0:2] == '聊，' or text[0:2] == '聊,':
-                    response = OpenAI(api_key=openai_token).responses.create(model="gpt-4.1", input=text[2:], tools=[{"type": "web_search"}]) #+"(請使用繁體中文(台灣)回覆)"}])
+                    response = OpenAI(api_key=openai_token).responses.create(model="gpt-5", input=text[2:], tools=[{"type": "web_search"}]) #+"(請使用繁體中文(台灣)回覆)"}])
                     lma.reply_message(response.output_text, tk, access_token)
                 elif text == '扛' or text == '坦':
                     lma.reply_image(get_meme(), tk, access_token)
