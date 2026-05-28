@@ -1,5 +1,9 @@
 __pycache__
+.venv
 .env
+.env.example
+.kiro
+aidlc-docs
 temp.wav
 text-to-speech.wav
 log
@@ -10,3 +14,8 @@ accounts-pie-chart.png
 videos
 pics
 Thumbs.db
+
+# Frontend
+frontend/node_modules
+dist
+*.local

@@ -98,6 +98,7 @@ def find_nearby_restaurants(place_name):
 
 # 記帳
 def accounting(text: str, client: str, ID: str, tk: str):
+    from services.account_service import account_service
     if firestore.get_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType'):
         try:
             typ = int(text)
@@ -105,8 +106,13 @@ def accounting(text: str, client: str, ID: str, tk: str):
                 raise
             ammount = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
             name = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
-            date = datetime.now(timezone(timedelta(hours=+8))).strftime("%Y_%m_%d")
-            firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7],[{"Name": name, "Ammount": ammount, "Type": typ, "Date": date}])
+            # 使用共用 AccountService 建立記帳項目
+            account_service.create_account(
+                user_doc_id=ID,
+                name=name,
+                amount=ammount,
+                type_id=typ,
+            )
             firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
             firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
             firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',False)
@@ -776,7 +782,62 @@ def interpretation(orig_txt: str, tk):
     reply_msg = {"type": "text","text": msg},{'type': 'audio','originalContentUrl': f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/text-to-speech/text-to-speech{tk}.wav','duration': audio_duration}
     return reply_msg
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=None)
+
+# --- Web UI 整合 (Unit 1) ---
+from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask import jsonify, send_from_directory, g
+from exceptions import AppError
+from api import register_blueprints
+
+# CORS 設定
+CORS(app,
+     resources={r"/api/*": {"origins": os.getenv("CORS_ORIGINS", "*")}},
+     supports_credentials=True)
+
+# Rate Limiter
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    storage_uri="memory://",
+    default_limits=["100 per minute"]
+)
+
+# 豁免 LINE webhook 的 rate limiting
+@limiter.request_filter
+def exempt_webhook():
+    return request.method == 'POST' and request.path == '/'
+
+# 註冊 API Blueprints
+register_blueprints(app)
+
+# 全域錯誤處理
+@app.errorhandler(AppError)
+def handle_app_error(e):
+    logger.warning(f"AppError: {e.code} - {e.message}")
+    return jsonify(e.to_dict()), e.status_code
+
+@app.errorhandler(429)
+def handle_rate_limit(e):
+    return jsonify({"error": "請求過於頻繁，請稍後再試", "code": "RATE_LIMITED"}), 429
+
+# Vue SPA serve (GET /)
+@app.route("/", methods=['GET'])
+def serve_vue_index():
+    return send_from_directory('dist', 'index.html')
+
+@app.route("/<path:path>", methods=['GET'])
+def serve_vue_assets(path):
+    # 先嘗試 serve 靜態檔案，找不到就回傳 index.html（SPA fallback）
+    import os
+    dist_path = os.path.join(app.root_path, 'dist')
+    if os.path.isfile(os.path.join(dist_path, path)):
+        return send_from_directory('dist', path)
+    return send_from_directory('dist', 'index.html')
+
+# --- LINE Bot Webhook (原有邏輯，不動) ---
 
 @app.route("/", methods=['POST'])
 
