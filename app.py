@@ -7,7 +7,7 @@ from logging.handlers import TimedRotatingFileHandler
 from dotenv import load_dotenv
 from datetime import timezone, timedelta, datetime
 from matplotlib import pyplot as plt
-from playwright.sync_api import sync_playwright
+# playwright 已移至 screenshot-service 微服務
 from openai import OpenAI
 from pydub import AudioSegment
 from operator import itemgetter
@@ -533,37 +533,41 @@ def forecast(address):
         return msg  # 如果取資料有發生錯誤，直接回傳 msg
 
 # 網頁截圖錄影
+# 網頁截圖錄影（透過 screenshot-service 微服務）
+SCREENSHOT_SERVICE_URL = os.getenv('SCREENSHOT_SERVICE_URL', 'http://screenshot-service:5001')
+
 def create_snapshot_video(sites, framerate, duration, width, height):
-    for output_name, url in sites:
-        # take screenshot using playwright
-        with sync_playwright() as playwright:
-            browser = playwright.firefox.launch()
-            context = browser.new_context(viewport={'width': width, 'height': height}, user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36')
-            page = context.new_page()
-            page.goto(url)
+    """呼叫 screenshot-service 進行截圖錄影，並下載產出的影片和截圖"""
+    site_list = [[name, url] for name, url in sites]
+    payload = {
+        'sites': site_list,
+        'framerate': framerate,
+        'duration': duration,
+        'width': width,
+        'height': height
+    }
+    resp = requests.post(f'{SCREENSHOT_SERVICE_URL}/capture', json=payload, timeout=600)
+    resp.raise_for_status()
+    results = resp.json()['results']
 
-            num_frames = framerate*duration
-            frame_interval = 1/framerate
-            frame_count = 0
+    os.makedirs('pics', exist_ok=True)
+    os.makedirs('videos', exist_ok=True)
 
-            while frame_count < num_frames:
-                if time.time() % frame_interval < 0.03:
-                    page.screenshot(path=f'pics/{output_name}_{frame_count:03d}.png')
-                    frame_count += 1
-            context.close()
-
-        # Convert the screenshots into a video using FFmpeg
-        ffmpeg_command = [
-            'ffmpeg',
-            '-y',
-            '-framerate', f'{framerate}',                # Frame rate (adjust as needed)
-            '-i', f'pics/{output_name}_%03d.png',       # Input file pattern
-            '-c:v', 'libx264',
-            '-pix_fmt', 'yuv420p',
-            f'videos/{output_name}.mp4'                       # Output filename
-        ]
-
-        subprocess.run(ffmpeg_command)
+    for item in results:
+        name = item['name']
+        # 下載影片
+        video_resp = requests.get(
+            f'{SCREENSHOT_SERVICE_URL}/download/video/{name}.mp4', timeout=60
+        )
+        with open(f'videos/{name}.mp4', 'wb') as f:
+            f.write(video_resp.content)
+        # 下載預覽截圖
+        preview_filename = os.path.basename(item['preview_path'])
+        img_resp = requests.get(
+            f'{SCREENSHOT_SERVICE_URL}/download/image/{preview_filename}', timeout=60
+        )
+        with open(f'pics/{preview_filename}', 'wb') as f:
+            f.write(img_resp.content)
 
 # 颱風預測函式
 def typhoon(tk: str, ID: str):

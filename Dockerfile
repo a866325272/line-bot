@@ -32,10 +32,8 @@ ENV GMAP_API_KEY ${GMAP_API_KEY}
 ENV JWT_SECRET_KEY ${JWT_SECRET_KEY}
 
 RUN pip3 install -r requirements.txt &&\
-    playwright install firefox --with-deps &&\
-    apt-get update && apt-get install -y fonts-wqy-zenhei ffmpeg &&\
-    rm -rf /root/.cache/matplotlib/* &&\
-    mkdir /app/videos &&\
+    apt-get update && apt-get install -y fonts-wqy-zenhei &&\
+    rm -rf /var/lib/apt/lists/* /root/.cache/matplotlib/* &&\
     mkdir -p /var/log/line-bot
 
 # Copy application code

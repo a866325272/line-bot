@@ -1,0 +1,15 @@
+# Screenshot Service - Playwright + FFmpeg
+FROM python:3.9.16-slim
+WORKDIR /app
+
+COPY screenshot-service/requirements.txt requirements.txt
+RUN pip3 install -r requirements.txt && \
+    playwright install firefox --with-deps && \
+    apt-get update && apt-get install -y fonts-wqy-zenhei ffmpeg && \
+    rm -rf /var/lib/apt/lists/* /root/.cache && \
+    mkdir -p /app/pics /app/videos
+
+COPY screenshot-service/main.py main.py
+
+EXPOSE 5001
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "--timeout", "300", "main:app"]
