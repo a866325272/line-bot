@@ -120,7 +120,6 @@ def download_image(filename):
         return jsonify({'error': 'File not found'}), 404
     return send_file(filepath, mimetype='image/png')
 
-
 if __name__ == '__main__':
     os.makedirs(PICS_DIR, exist_ok=True)
     os.makedirs(VIDEOS_DIR, exist_ok=True)
