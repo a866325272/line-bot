@@ -14,6 +14,15 @@ export const accountsApi = {
   },
 
   /**
+   * 查詢自訂日期區間明細
+   * @param {string} startDate - 格式 YYYY_MM_DD
+   * @param {string} endDate - 格式 YYYY_MM_DD
+   */
+  getAccountsRange(startDate, endDate) {
+    return apiClient.get('/accounts', { start_date: startDate, end_date: endDate })
+  },
+
+  /**
    * 月帳統計資料
    * @param {string} month - 格式 YYYY_MM
    */

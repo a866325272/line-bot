@@ -218,9 +218,8 @@ class AccountService:
             "record_count": len(accounts),
         }
 
-    def get_range_summary(self, user_doc_id: str, start_date: str, end_date: str) -> dict:
-        """計算自訂日期區間的統計"""
-        # 找出涵蓋的月份
+    def get_range_accounts(self, user_doc_id: str, start_date: str, end_date: str) -> list:
+        """查詢自訂日期區間的所有記帳記錄"""
         start_parts = start_date.split("_")
         end_parts = end_date.split("_")
         start_year, start_month = int(start_parts[0]), int(start_parts[1])
@@ -231,14 +230,20 @@ class AccountService:
         while (y < end_year) or (y == end_year and m <= end_month):
             month_str = f"{y}_{str(m).zfill(2)}"
             monthly = self.get_monthly_accounts(user_doc_id, month_str)
-            # 篩選日期區間內的記錄
             for acc in monthly:
                 if acc["date"] >= start_date and acc["date"] <= end_date:
+                    # 加上 month 資訊方便前端編輯/刪除時定位
+                    acc["month"] = month_str
                     all_accounts.append(acc)
             m += 1
             if m > 12:
                 m = 1
                 y += 1
+        return all_accounts
+
+    def get_range_summary(self, user_doc_id: str, start_date: str, end_date: str) -> dict:
+        """計算自訂日期區間的統計"""
+        all_accounts = self.get_range_accounts(user_doc_id, start_date, end_date)
 
         # 統計
         category_totals = {}

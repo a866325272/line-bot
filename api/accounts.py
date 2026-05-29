@@ -11,15 +11,22 @@ accounts_bp = Blueprint("accounts", __name__)
 @accounts_bp.route("", methods=["GET"])
 @require_auth
 def get_accounts():
-    """查詢月份記帳明細"""
+    """查詢記帳明細（支援月份或自訂日期區間）"""
     month = request.args.get("month")
-    if not month:
-        # 預設當月
-        month = account_service._get_current_month()
+    start_date = request.args.get("start_date")  # YYYY_MM_DD
+    end_date = request.args.get("end_date")  # YYYY_MM_DD
 
     user_doc_id = g.user["firestore_doc_id"]
-    accounts = account_service.get_monthly_accounts(user_doc_id, month)
-    return jsonify({"month": month, "accounts": accounts}), 200
+
+    if start_date and end_date:
+        # 自訂日期區間
+        accounts = account_service.get_range_accounts(user_doc_id, start_date, end_date)
+        return jsonify({"start_date": start_date, "end_date": end_date, "accounts": accounts}), 200
+    else:
+        if not month:
+            month = account_service._get_current_month()
+        accounts = account_service.get_monthly_accounts(user_doc_id, month)
+        return jsonify({"month": month, "accounts": accounts}), 200
 
 
 @accounts_bp.route("/summary", methods=["GET"])
