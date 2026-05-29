@@ -106,13 +106,9 @@ def accounting(text: str, client: str, ID: str, tk: str):
                 raise
             ammount = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
             name = firestore.get_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
-            # 使用共用 AccountService 建立記帳項目
-            account_service.create_account(
-                user_doc_id=ID,
-                name=name,
-                amount=ammount,
-                type_id=typ,
-            )
+            # 使用原本的寫入方式（因為 collection 名稱依 client 類型而定）
+            date = datetime.now(timezone(timedelta(hours=+8))).strftime("%Y_%m_%d")
+            firestore.append_firestore_array_field('Linebot_'+client+'ID',ID,'Accounts_'+date[:7],[{"Name": name, "Ammount": ammount, "Type": typ, "Date": date}])
             firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpName')
             firestore.delete_firestore_field('Linebot_'+client+'ID',ID,'AccountingTmpAmmount')
             firestore.update_firestore_field('Linebot_'+client+'ID',ID,'IsAccountingType',False)
