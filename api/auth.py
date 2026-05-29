@@ -42,7 +42,7 @@ def register():
         secure=os.getenv("FLASK_ENV") == "production",
         samesite="Strict",
         max_age=JWT_REFRESH_TOKEN_EXPIRES,
-        path="/api/auth",
+        path="/",
     )
     return response, 201
 
@@ -71,7 +71,7 @@ def login():
         secure=os.getenv("FLASK_ENV") == "production",
         samesite="Strict",
         max_age=JWT_REFRESH_TOKEN_EXPIRES,
-        path="/api/auth",
+        path="/",
     )
     return response, 200
 
@@ -92,7 +92,7 @@ def logout():
     auth_service.logout(user_id)
 
     response = make_response(jsonify({"message": "登出成功"}))
-    response.delete_cookie("refresh_token", path="/api/auth")
+    response.delete_cookie("refresh_token", path="/")
     return response, 200
 
 

@@ -830,10 +830,15 @@ def serve_vue_index():
 
 @app.route("/<path:path>", methods=['GET'])
 def serve_vue_assets(path):
-    # 先嘗試 serve 靜態檔案，找不到就回傳 index.html（SPA fallback）
+    # Strip /line-bot/ prefix if present (for local testing without nginx)
     import os
+    if path.startswith('line-bot/'):
+        path = path[len('line-bot/'):]
+    if path == 'line-bot':
+        path = ''
+
     dist_path = os.path.join(app.root_path, 'dist')
-    if os.path.isfile(os.path.join(dist_path, path)):
+    if path and os.path.isfile(os.path.join(dist_path, path)):
         return send_from_directory('dist', path)
     return send_from_directory('dist', 'index.html')
 
@@ -955,4 +960,21 @@ def linebot():
     return 'OK'                                                 # 驗證 Webhook 使用，不能省略
 
 if __name__ == "__main__":
+    # 本地測試用：模擬 nginx strip /line-bot/ 前綴的行為
+    class StripPrefixMiddleware:
+        def __init__(self, wsgi_app, prefix='/line-bot'):
+            self.wsgi_app = wsgi_app
+            self.prefix = prefix
+
+        def __call__(self, environ, start_response):
+            path = environ.get('PATH_INFO', '')
+            if path.startswith(self.prefix + '/'):
+                environ['PATH_INFO'] = path[len(self.prefix):]
+                environ['SCRIPT_NAME'] = self.prefix
+            elif path == self.prefix:
+                environ['PATH_INFO'] = '/'
+                environ['SCRIPT_NAME'] = self.prefix
+            return self.wsgi_app(environ, start_response)
+
+    app.wsgi_app = StripPrefixMiddleware(app.wsgi_app)
     app.run(host='0.0.0.0')

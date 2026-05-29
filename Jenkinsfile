@@ -41,7 +41,7 @@ pipeline {
                     sh "ssh -i ${SSH_KEY} root@${DEPLOY_DEST} /usr/local/bin/docker login -u ${USERNAME} -p ${PASSWORD} ${REPO_URL}"
                 }
                 sh "ssh -i ${SSH_KEY} root@${DEPLOY_DEST} /usr/local/bin/docker-compose -f ${DOCKER_COMPOSE_FILE} down"
-                sh '''docker images | grep ${REPO_URL}/jeff/line-bot | awk '{print $3}' | xargs docker rmi'''
+                sh '''docker images | grep ${REPO_URL}/jeff/line-bot | awk '{print $3}' | xargs -r docker rmi || true'''
                 sh "ssh -i ${SSH_KEY} root@${DEPLOY_DEST} sed -i 's+${REPO_URL}/jeff/line-bot.*+${REPO_URL}/jeff/line-bot:${MAJOR_VERSION}.${BUILD_NUMBER}+g' ${DOCKER_COMPOSE_FILE}"
                 sh "ssh -i ${SSH_KEY} root@${DEPLOY_DEST} /usr/local/bin/docker-compose -f ${DOCKER_COMPOSE_FILE} up -d"
             }
