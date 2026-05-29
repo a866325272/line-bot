@@ -190,7 +190,7 @@ class AccountService:
         expense_total = 0
 
         for account in accounts:
-            type_id = account["type"]
+            type_id = int(account["type"])
             amount = account["amount"]
 
             if type_id == 11:
@@ -216,6 +216,109 @@ class AccountService:
             "balance": income_total - expense_total,
             "categories": categories,
             "record_count": len(accounts),
+        }
+
+    def get_range_summary(self, user_doc_id: str, start_date: str, end_date: str) -> dict:
+        """計算自訂日期區間的統計"""
+        # 找出涵蓋的月份
+        start_parts = start_date.split("_")
+        end_parts = end_date.split("_")
+        start_year, start_month = int(start_parts[0]), int(start_parts[1])
+        end_year, end_month = int(end_parts[0]), int(end_parts[1])
+
+        all_accounts = []
+        y, m = start_year, start_month
+        while (y < end_year) or (y == end_year and m <= end_month):
+            month_str = f"{y}_{str(m).zfill(2)}"
+            monthly = self.get_monthly_accounts(user_doc_id, month_str)
+            # 篩選日期區間內的記錄
+            for acc in monthly:
+                if acc["date"] >= start_date and acc["date"] <= end_date:
+                    all_accounts.append(acc)
+            m += 1
+            if m > 12:
+                m = 1
+                y += 1
+
+        # 統計
+        category_totals = {}
+        income_total = 0
+        expense_total = 0
+
+        for account in all_accounts:
+            type_id = int(account["type"])
+            amount = account["amount"]
+            if type_id == 11:
+                income_total += amount
+            else:
+                expense_total += amount
+                category_totals[type_id] = category_totals.get(type_id, 0) + amount
+
+        categories = []
+        for type_id, total in sorted(category_totals.items()):
+            percentage = (total / expense_total * 100) if expense_total > 0 else 0
+            categories.append({
+                "type": type_id,
+                "total": total,
+                "percentage": round(percentage, 1),
+            })
+
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "expense_total": expense_total,
+            "income_total": income_total,
+            "balance": income_total - expense_total,
+            "categories": categories,
+            "record_count": len(all_accounts),
+        }
+
+    def get_trend_data(self, user_doc_id: str, start_month: str, end_month: str) -> dict:
+        """取得按月趨勢資料"""
+        start_parts = start_month.split("_")
+        end_parts = end_month.split("_")
+        start_year, start_m = int(start_parts[0]), int(start_parts[1])
+        end_year, end_m = int(end_parts[0]), int(end_parts[1])
+
+        months = []
+        monthly_data = []
+
+        y, m = start_year, start_m
+        while (y < end_year) or (y == end_year and m <= end_m):
+            month_str = f"{y}_{str(m).zfill(2)}"
+            months.append(month_str)
+
+            accounts = self.get_monthly_accounts(user_doc_id, month_str)
+
+            category_totals = {}
+            income_total = 0
+            expense_total = 0
+
+            for acc in accounts:
+                type_id = int(acc["type"])
+                amount = acc["amount"]
+                if type_id == 11:
+                    income_total += amount
+                else:
+                    expense_total += amount
+                    category_totals[type_id] = category_totals.get(type_id, 0) + amount
+
+            monthly_data.append({
+                "month": month_str,
+                "expense_total": expense_total,
+                "income_total": income_total,
+                "balance": income_total - expense_total,
+                "categories": category_totals,
+            })
+
+            m += 1
+            if m > 12:
+                m = 1
+                y += 1
+
+        return {
+            "months": months,
+            "data": monthly_data,
         }
 
 

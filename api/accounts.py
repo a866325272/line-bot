@@ -25,14 +25,36 @@ def get_accounts():
 @accounts_bp.route("/summary", methods=["GET"])
 @require_auth
 def get_summary():
-    """月帳統計資料"""
+    """月帳統計資料（支援自訂日期區間）"""
     month = request.args.get("month")
-    if not month:
-        month = account_service._get_current_month()
+    start_date = request.args.get("start_date")  # YYYY_MM_DD
+    end_date = request.args.get("end_date")  # YYYY_MM_DD
 
     user_doc_id = g.user["firestore_doc_id"]
-    summary = account_service.get_monthly_summary(user_doc_id, month)
+
+    if start_date and end_date:
+        summary = account_service.get_range_summary(user_doc_id, start_date, end_date)
+    else:
+        if not month:
+            month = account_service._get_current_month()
+        summary = account_service.get_monthly_summary(user_doc_id, month)
+
     return jsonify(summary), 200
+
+
+@accounts_bp.route("/trend", methods=["GET"])
+@require_auth
+def get_trend():
+    """趨勢資料（按月）"""
+    start_month = request.args.get("start_month")  # YYYY_MM
+    end_month = request.args.get("end_month")  # YYYY_MM
+
+    if not start_month or not end_month:
+        return jsonify({"error": "請提供 start_month 和 end_month", "code": "PARAMS_REQUIRED"}), 400
+
+    user_doc_id = g.user["firestore_doc_id"]
+    trend = account_service.get_trend_data(user_doc_id, start_month, end_month)
+    return jsonify(trend), 200
 
 
 @accounts_bp.route("", methods=["POST"])
