@@ -4,6 +4,8 @@ Screenshot Service - 獨立的網頁截圖錄影微服務
 """
 import os
 import time
+import logging
+import logging.handlers
 import subprocess
 import shutil
 from flask import Flask, request, jsonify, send_file
@@ -13,6 +15,17 @@ app = Flask(__name__)
 
 PICS_DIR = '/app/pics'
 VIDEOS_DIR = '/app/videos'
+
+# log config
+logger = logging.getLogger('')
+logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+rotate_handler = logging.handlers.TimedRotatingFileHandler('/var/log/screenshot-service/screenshot-service.log', when="h", interval=1, backupCount=720)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+rotate_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+logger.addHandler(rotate_handler)
+logger.addHandler(console_handler)
 
 
 @app.route('/health', methods=['GET'])
@@ -45,6 +58,8 @@ def capture():
 
     if not sites:
         return jsonify({'error': 'No sites provided'}), 400
+
+    logger.info(f'Capture request: sites={[s[0] for s in sites]}, framerate={framerate}, duration={duration}, {width}x{height}')
 
     results = []
 
@@ -90,22 +105,20 @@ def capture():
         ]
         subprocess.run(ffmpeg_command, capture_output=True)
 
-        # 找出最後一張截圖作為預覽圖
-        last_frame = f'{PICS_DIR}/{output_name}_{num_frames - 1:03d}.png'
-
         results.append({
             'name': output_name,
             'video_path': video_path,
-            'preview_path': last_frame,
             'total_frames': num_frames
         })
 
+    logger.info(f'Capture complete: {[r["name"] for r in results]}')
     return jsonify({'results': results}), 200
 
 
 @app.route('/download/video/<filename>', methods=['GET'])
 def download_video(filename):
     """下載影片檔案"""
+    logger.info(f'Download video: {filename}')
     filepath = os.path.join(VIDEOS_DIR, filename)
     if not os.path.exists(filepath):
         return jsonify({'error': 'File not found'}), 404
@@ -115,6 +128,7 @@ def download_video(filename):
 @app.route('/download/image/<filename>', methods=['GET'])
 def download_image(filename):
     """下載截圖檔案"""
+    logger.info(f'Download image: {filename}')
     filepath = os.path.join(PICS_DIR, filename)
     if not os.path.exists(filepath):
         return jsonify({'error': 'File not found'}), 404

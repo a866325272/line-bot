@@ -92,7 +92,10 @@ pipeline {
 
         stage('Cleanup') {
             steps {
-                sh "ssh -i ${SSH_KEY} root@${DEPLOY_DEST} /usr/local/bin/docker image prune -f"
+                // 刪除舊版 image（保留目前使用中的版本）
+                sh "docker images '${REPO_URL}/jeff/line-bot' --format '{{.ID}} {{.Tag}}' | grep -v '${MAJOR_VERSION}.${BUILD_NUMBER}' | awk '{print \$1}' | xargs -r docker rmi -f || true"
+                sh "docker images '${REPO_URL}/jeff/line-bot/screenshot-service' --format '{{.ID}} {{.Tag}}' | grep -v '${MAJOR_VERSION}.${BUILD_NUMBER}' | awk '{print \$1}' | xargs -r docker rmi -f || true"
+                sh "docker image prune -f"
             }
         }
     }
