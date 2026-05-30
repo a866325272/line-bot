@@ -532,11 +532,12 @@ def forecast(address):
 # 網頁截圖錄影（透過 screenshot-service 微服務）
 SCREENSHOT_SERVICE_URL = os.getenv('SCREENSHOT_SERVICE_URL', 'http://screenshot-service:5001')
 
-def create_snapshot_video(sites, framerate, duration, width, height, preview_frames=None):
+def create_snapshot_video(sites, framerate, duration, width, height, preview_frames=None, headers=None):
     """呼叫 screenshot-service 進行截圖錄影，並下載產出的影片和截圖
 
     Args:
         preview_frames: 要額外下載的幀編號列表，例如 [18] 會下載 {name}_018.png
+        headers: 額外的 HTTP headers，例如 {"Referer": "https://www.google.com/"}
     """
     site_list = [[name, url] for name, url in sites]
     payload = {
@@ -546,6 +547,8 @@ def create_snapshot_video(sites, framerate, duration, width, height, preview_fra
         'width': width,
         'height': height
     }
+    if headers:
+        payload['headers'] = headers
     logger.info(f'Calling screenshot service: {SCREENSHOT_SERVICE_URL}/capture with sites={[s[0] for s in site_list]}')
     resp = requests.post(f'{SCREENSHOT_SERVICE_URL}/capture', json=payload, timeout=600)
     resp.raise_for_status()
@@ -698,10 +701,10 @@ def current_weather(address):
 def earthquake(tk: str):
     msg = ['找不到地震資訊','https://example.com/demo.jpg','https://example.com/demo.mp4','https://example.com/demo.jpg']             # 預設回傳的訊息
     try:
-        earthquake_yturl = 'https://www.youtube.com/embed/Owke6Quk7T0?autoplay=1'
+        earthquake_yturl = 'https://www.youtube.com/embed/KyT4qSK8lJo?autoplay=1&controls=0&rel=0&modestbranding=1'
 
         # 直接呼叫 screenshot service（單一站點不需要平行）
-        create_snapshot_video([('earthquake', earthquake_yturl)], 6, 10, 1280, 720, preview_frames=[24])
+        create_snapshot_video([('earthquake', earthquake_yturl)], 6, 10, 1280, 720, preview_frames=[24], headers={"Referer": "https://www.google.com/"})
 
         # 預覽圖用前幾幀（影片開頭截圖）
         gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/earthquake.mp4", f'earthquake/earthquake{tk}.mp4')

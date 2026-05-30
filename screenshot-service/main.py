@@ -55,6 +55,7 @@ def capture():
     duration = data.get('duration', 30)
     width = data.get('width', 1138)
     height = data.get('height', 640)
+    extra_headers = data.get('headers', {})
 
     if not sites:
         return jsonify({'error': 'No sites provided'}), 400
@@ -76,7 +77,8 @@ def capture():
                 viewport={'width': width, 'height': height},
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                            'AppleWebKit/537.36 (KHTML, like Gecko) '
-                           'Chrome/123.0.0.0 Safari/537.36'
+                           'Chrome/123.0.0.0 Safari/537.36',
+                extra_http_headers=extra_headers
             )
             page = context.new_page()
             page.goto(url, wait_until='networkidle', timeout=60000)
