@@ -9,7 +9,7 @@ from exceptions import ValidationError, NotFoundError
 
 db = firestore_client.Client()
 
-ACCOUNTS_COLLECTION = "Linebot_UserID"
+ACCOUNTS_COLLECTION = "Linebot_UserID"  # 預設，實際使用時由 API 層傳入或從 g.user 取得
 
 
 class AccountService:
@@ -66,7 +66,7 @@ class AccountService:
     # --- CRUD Operations ---
 
     def create_account(self, user_doc_id: str, name: str, amount: float,
-                       type_id: int, date: str = None) -> dict:
+                       type_id: int, date: str = None, collection: str = None) -> dict:
         """新增記帳項目"""
         if not date:
             date = self._get_today_date()
@@ -84,20 +84,22 @@ class AccountService:
         }
 
         # 追加到 Firestore 陣列
-        doc_ref = db.collection(ACCOUNTS_COLLECTION).document(user_doc_id)
+        col = collection or ACCOUNTS_COLLECTION
+        doc_ref = db.collection(col).document(user_doc_id)
         doc_ref.update({
             field_name: firestore_client.ArrayUnion([account_entry])
         })
 
         return account_entry
 
-    def get_monthly_accounts(self, user_doc_id: str, month: str) -> list:
+    def get_monthly_accounts(self, user_doc_id: str, month: str, collection: str = None) -> list:
         """查詢指定月份所有記帳記錄"""
         if not month:
             month = self._get_current_month()
 
         field_name = f"Accounts_{month}"
-        doc_ref = db.collection(ACCOUNTS_COLLECTION).document(user_doc_id)
+        col = collection or ACCOUNTS_COLLECTION
+        doc_ref = db.collection(col).document(user_doc_id)
         doc = doc_ref.get()
 
         if not doc.exists:
@@ -118,10 +120,11 @@ class AccountService:
             })
         return result
 
-    def update_account(self, user_doc_id: str, month: str, index: int, data: dict) -> dict:
+    def update_account(self, user_doc_id: str, month: str, index: int, data: dict, collection: str = None) -> dict:
         """更新指定月份的第 index 筆記錄"""
         field_name = f"Accounts_{month}"
-        doc_ref = db.collection(ACCOUNTS_COLLECTION).document(user_doc_id)
+        col = collection or ACCOUNTS_COLLECTION
+        doc_ref = db.collection(col).document(user_doc_id)
         doc = doc_ref.get()
 
         if not doc.exists:
@@ -160,10 +163,11 @@ class AccountService:
             "date": accounts[index]["Date"],
         }
 
-    def delete_account(self, user_doc_id: str, month: str, index: int):
+    def delete_account(self, user_doc_id: str, month: str, index: int, collection: str = None):
         """刪除指定月份的第 index 筆記錄"""
         field_name = f"Accounts_{month}"
-        doc_ref = db.collection(ACCOUNTS_COLLECTION).document(user_doc_id)
+        col = collection or ACCOUNTS_COLLECTION
+        doc_ref = db.collection(col).document(user_doc_id)
         doc = doc_ref.get()
 
         if not doc.exists:
@@ -180,9 +184,9 @@ class AccountService:
         accounts.pop(index)
         doc_ref.update({field_name: accounts})
 
-    def get_monthly_summary(self, user_doc_id: str, month: str) -> dict:
+    def get_monthly_summary(self, user_doc_id: str, month: str, collection: str = None) -> dict:
         """計算月帳統計"""
-        accounts = self.get_monthly_accounts(user_doc_id, month)
+        accounts = self.get_monthly_accounts(user_doc_id, month, collection)
 
         # 類別統計
         category_totals = {}
@@ -218,7 +222,7 @@ class AccountService:
             "record_count": len(accounts),
         }
 
-    def get_range_accounts(self, user_doc_id: str, start_date: str, end_date: str) -> list:
+    def get_range_accounts(self, user_doc_id: str, start_date: str, end_date: str, collection: str = None) -> list:
         """查詢自訂日期區間的所有記帳記錄"""
         start_parts = start_date.split("_")
         end_parts = end_date.split("_")
@@ -229,7 +233,7 @@ class AccountService:
         y, m = start_year, start_month
         while (y < end_year) or (y == end_year and m <= end_month):
             month_str = f"{y}_{str(m).zfill(2)}"
-            monthly = self.get_monthly_accounts(user_doc_id, month_str)
+            monthly = self.get_monthly_accounts(user_doc_id, month_str, collection)
             for acc in monthly:
                 if acc["date"] >= start_date and acc["date"] <= end_date:
                     # 加上 month 資訊方便前端編輯/刪除時定位
@@ -241,9 +245,9 @@ class AccountService:
                 y += 1
         return all_accounts
 
-    def get_range_summary(self, user_doc_id: str, start_date: str, end_date: str) -> dict:
+    def get_range_summary(self, user_doc_id: str, start_date: str, end_date: str, collection: str = None) -> dict:
         """計算自訂日期區間的統計"""
-        all_accounts = self.get_range_accounts(user_doc_id, start_date, end_date)
+        all_accounts = self.get_range_accounts(user_doc_id, start_date, end_date, collection)
 
         # 統計
         category_totals = {}
@@ -278,7 +282,7 @@ class AccountService:
             "record_count": len(all_accounts),
         }
 
-    def get_trend_data(self, user_doc_id: str, start_month: str, end_month: str) -> dict:
+    def get_trend_data(self, user_doc_id: str, start_month: str, end_month: str, collection: str = None) -> dict:
         """取得按月趨勢資料"""
         start_parts = start_month.split("_")
         end_parts = end_month.split("_")
@@ -293,7 +297,7 @@ class AccountService:
             month_str = f"{y}_{str(m).zfill(2)}"
             months.append(month_str)
 
-            accounts = self.get_monthly_accounts(user_doc_id, month_str)
+            accounts = self.get_monthly_accounts(user_doc_id, month_str, collection)
 
             category_totals = {}
             income_total = 0

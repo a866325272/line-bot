@@ -59,12 +59,13 @@ class AuthService:
     # --- Token utilities ---
 
     @staticmethod
-    def generate_access_token(user_id: str, username: str, firestore_doc_id: str) -> str:
+    def generate_access_token(user_id: str, username: str, firestore_doc_id: str, firestore_collection: str = "Linebot_UserID") -> str:
         """生成 Access Token (15 min)"""
         payload = {
             "sub": user_id,
             "username": username,
             "firestore_doc_id": firestore_doc_id,
+            "firestore_collection": firestore_collection,
             "iat": datetime.now(timezone.utc),
             "exp": datetime.now(timezone.utc) + timedelta(seconds=JWT_ACCESS_TOKEN_EXPIRES),
         }
@@ -123,9 +124,16 @@ class AuthService:
 
         # 處理 Firestore document ID
         if firestore_doc_id:
-            # 驗證指定的 document 是否存在
-            doc_ref = db.collection(self.ACCOUNTS_COLLECTION).document(firestore_doc_id)
-            if not doc_ref.get().exists:
+            # 驗證指定的 document 是否存在（支援 UserID 和 GroupID）
+            doc_exists = False
+            target_collection = None
+            for collection in ["Linebot_UserID", "Linebot_GroupID"]:
+                doc_ref = db.collection(collection).document(firestore_doc_id)
+                if doc_ref.get().exists:
+                    doc_exists = True
+                    target_collection = collection
+                    break
+            if not doc_exists:
                 raise NotFoundError(
                     "指定的 Firestore Document ID 不存在",
                     "DOC_NOT_FOUND",
@@ -134,6 +142,7 @@ class AuthService:
         else:
             # 建立新的 Firestore document
             firestore_doc_id = str(uuid.uuid4()).replace("-", "")
+            target_collection = self.ACCOUNTS_COLLECTION
             doc_ref = db.collection(self.ACCOUNTS_COLLECTION).document(firestore_doc_id)
             doc_ref.set({
                 "Categories": DEFAULT_CATEGORIES,
@@ -151,6 +160,7 @@ class AuthService:
             "username_lower": username.lower(),
             "password_hash": password_hash,
             "firestore_doc_id": firestore_doc_id,
+            "firestore_collection": target_collection,
             "spreadsheet_id": "",
             "refresh_token_hash": "",
             "created_at": now,
@@ -188,7 +198,8 @@ class AuthService:
 
         # 生成 tokens
         access_token = self.generate_access_token(
-            user_id, user_data["username"], user_data["firestore_doc_id"]
+            user_id, user_data["username"], user_data["firestore_doc_id"],
+            user_data.get("firestore_collection", "Linebot_UserID")
         )
         refresh_token = self.generate_refresh_token(user_id)
 
@@ -242,7 +253,8 @@ class AuthService:
 
         # 生成新的 access token
         access_token = self.generate_access_token(
-            user_id, user_data["username"], user_data["firestore_doc_id"]
+            user_id, user_data["username"], user_data["firestore_doc_id"],
+            user_data.get("firestore_collection", "Linebot_UserID")
         )
 
         return {"access_token": access_token}

@@ -50,7 +50,8 @@ def require_auth(f):
         g.user = {
             "id": payload.get("sub"),
             "username": payload.get("username"),
-            "firestore_doc_id": payload.get("firestore_doc_id")
+            "firestore_doc_id": payload.get("firestore_doc_id"),
+            "firestore_collection": payload.get("firestore_collection", "Linebot_UserID"),
         }
         return f(*args, **kwargs)
     return decorated
