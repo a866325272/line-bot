@@ -532,8 +532,12 @@ def forecast(address):
 # 網頁截圖錄影（透過 screenshot-service 微服務）
 SCREENSHOT_SERVICE_URL = os.getenv('SCREENSHOT_SERVICE_URL', 'http://screenshot-service:5001')
 
-def create_snapshot_video(sites, framerate, duration, width, height):
-    """呼叫 screenshot-service 進行截圖錄影，並下載產出的影片和截圖"""
+def create_snapshot_video(sites, framerate, duration, width, height, preview_frames=None):
+    """呼叫 screenshot-service 進行截圖錄影，並下載產出的影片和截圖
+
+    Args:
+        preview_frames: 要額外下載的幀編號列表，例如 [18] 會下載 {name}_018.png
+    """
     site_list = [[name, url] for name, url in sites]
     payload = {
         'sites': site_list,
@@ -542,9 +546,11 @@ def create_snapshot_video(sites, framerate, duration, width, height):
         'width': width,
         'height': height
     }
+    logger.info(f'Calling screenshot service: {SCREENSHOT_SERVICE_URL}/capture with sites={[s[0] for s in site_list]}')
     resp = requests.post(f'{SCREENSHOT_SERVICE_URL}/capture', json=payload, timeout=600)
     resp.raise_for_status()
     results = resp.json()['results']
+    logger.info(f'Screenshot service returned: {results}')
 
     os.makedirs('pics', exist_ok=True)
     os.makedirs('videos', exist_ok=True)
@@ -557,13 +563,16 @@ def create_snapshot_video(sites, framerate, duration, width, height):
         )
         with open(f'videos/{name}.mp4', 'wb') as f:
             f.write(video_resp.content)
-        # 下載預覽截圖
-        preview_filename = os.path.basename(item['preview_path'])
-        img_resp = requests.get(
-            f'{SCREENSHOT_SERVICE_URL}/download/image/{preview_filename}', timeout=60
-        )
-        with open(f'pics/{preview_filename}', 'wb') as f:
-            f.write(img_resp.content)
+        # 下載指定幀作為預覽圖
+        if preview_frames:
+            for frame_num in preview_frames:
+                frame_filename = f'{name}_{frame_num:03d}.png'
+                img_resp = requests.get(
+                    f'{SCREENSHOT_SERVICE_URL}/download/image/{frame_filename}', timeout=60
+                )
+                if img_resp.status_code == 200:
+                    with open(f'pics/{frame_filename}', 'wb') as f:
+                        f.write(img_resp.content)
 
 # 颱風預測函式
 def typhoon(tk: str, ID: str):
@@ -571,26 +580,19 @@ def typhoon(tk: str, ID: str):
     try:
         ncdr_url = 'https://watch.ncdr.nat.gov.tw/watch_tracks_pro'
         windy_url = 'https://www.windy.com/?24.939,121.542,5'
-        sites_to_process = [
-            ('typhoon', ncdr_url),
-            ('windy', windy_url)
-        ]
 
-        sites_grouped = [[sites_to_process[i]] for i in range(len(sites_to_process))]
+        # 依序呼叫 screenshot service
+        create_snapshot_video([('typhoon', ncdr_url)], 4, 30, 1138, 640, preview_frames=[18])
+        create_snapshot_video([('windy', windy_url)], 4, 30, 1138, 640, preview_frames=[18])
 
-        processes = []
-        for sites in sites_grouped:
-            p = multiprocessing.Process(target=create_snapshot_video, args=(sites,4,30,1138,640,))
-            p.start()
-            processes.append(p)
-
-        for p in processes:
-            p.join()
+        # 預覽圖用前幾幀（影片開頭截圖）
+        typhoon_preview = 'typhoon_018.png'
+        windy_preview = 'windy_018.png'
 
         gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/typhoon.mp4", f'typhoon/typhoon{tk}.mp4')
-        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/typhoon_018.png", f'typhoon/typhoon{tk}.png')
+        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", f"./pics/{typhoon_preview}", f'typhoon/typhoon{tk}.png')
         gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/windy.mp4", f'typhoon/windy{tk}.mp4')
-        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/windy_018.png", f'typhoon/windy{tk}.png')
+        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", f"./pics/{windy_preview}", f'typhoon/windy{tk}.png')
         gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.mp4')
         gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.png')
         gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/windy{tk}.mp4')
@@ -692,21 +694,11 @@ def earthquake(tk: str):
     msg = ['找不到地震資訊','https://example.com/demo.jpg','https://example.com/demo.mp4','https://example.com/demo.jpg']             # 預設回傳的訊息
     try:
         earthquake_yturl = 'https://www.youtube.com/embed/Owke6Quk7T0?autoplay=1'
-        sites_to_process = [
-            ('earthquake', earthquake_yturl)
-        ]
 
-        sites_grouped = [[sites_to_process[i]] for i in range(len(sites_to_process))]
+        # 直接呼叫 screenshot service（單一站點不需要平行）
+        create_snapshot_video([('earthquake', earthquake_yturl)], 6, 10, 1280, 720, preview_frames=[24])
 
-        processes = []
-        for sites in sites_grouped:
-            p = multiprocessing.Process(target=create_snapshot_video, args=(sites,6,10,1280,720,))
-            p.start()
-            processes.append(p)
-
-        for p in processes:
-            p.join()
-
+        # 預覽圖用前幾幀（影片開頭截圖）
         gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/earthquake.mp4", f'earthquake/earthquake{tk}.mp4')
         gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/earthquake_024.png", f'earthquake/earthquake{tk}.png')
         gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'earthquake/earthquake{tk}.mp4')
