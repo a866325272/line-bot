@@ -581,9 +581,14 @@ def typhoon(tk: str, ID: str):
         ncdr_url = 'https://watch.ncdr.nat.gov.tw/watch_tracks_pro'
         windy_url = 'https://www.windy.com/?24.939,121.542,5'
 
-        # 依序呼叫 screenshot service
-        create_snapshot_video([('typhoon', ncdr_url)], 4, 30, 1138, 640, preview_frames=[18])
-        create_snapshot_video([('windy', windy_url)], 4, 30, 1138, 640, preview_frames=[18])
+        # 平行呼叫 screenshot service
+        import threading
+        t1 = threading.Thread(target=create_snapshot_video, args=([('typhoon', ncdr_url)], 4, 30, 1138, 640), kwargs={'preview_frames': [18]})
+        t2 = threading.Thread(target=create_snapshot_video, args=([('windy', windy_url)], 4, 30, 1138, 640), kwargs={'preview_frames': [18]})
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
 
         # 預覽圖用前幾幀（影片開頭截圖）
         typhoon_preview = 'typhoon_018.png'

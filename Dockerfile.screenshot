@@ -12,4 +12,4 @@ RUN pip3 install -r requirements.txt && \
 COPY screenshot-service/main.py main.py
 
 EXPOSE 5001
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "1", "--timeout", "300", "main:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "--timeout", "300", "main:app"]
