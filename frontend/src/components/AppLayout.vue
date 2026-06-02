@@ -138,14 +138,14 @@ const allNavItems = [
 // 底部 tab bar 項目（手機用，最多 4 個 + 更多）
 const bottomNavItems = [
   { path: '/', name: '首頁', icon: '📊' },
-  { path: '/budget', name: '預算', icon: '💰' },
+  { path: '/detail', name: '明細', icon: '📋' },
   { path: '/accounting', name: '記帳', icon: '✏️', highlight: true },
   { path: '/statistics', name: '統計', icon: '📈' },
 ]
 
 // 「更多」選單項目
 const moreNavItems = [
-  { path: '/detail', name: '明細', icon: '📋' },
+  { path: '/budget', name: '預算設定', icon: '💰' },
   { path: '/categories', name: '類別管理', icon: '🏷️' },
   { path: '/settings', name: '個人設定', icon: '⚙️' },
 ]
