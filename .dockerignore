@@ -1,0 +1,31 @@
+# Version control
+.git/
+.gitignore
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Node (frontend build handled in multi-stage)
+frontend/node_modules/
+
+# IDE / OS
+.kiro/
+.DS_Store
+*.swp
+
+# Build artifacts
+dist/
+screenshots-service/pics/
+screenshots-service/videos/
+
+# Docs
+aidlc-docs/
+Screenshots/
+README.md
+
+# Env (secrets should come from runtime, not baked into image)
+.env
+.env.example

@@ -8,46 +8,41 @@ RUN npm run build
 
 # Stage 2: Python app
 FROM python:3.9.16-slim
+
 WORKDIR /app
-COPY requirements.txt requirements.txt
 
-ARG EPA_TOKEN
-ARG CWA_TOKEN
-ARG ACCESS_TOKEN
-ARG SECRET
-ARG OPENAI_TOKEN
-ARG GOOGLE_APPLICATION_CREDENTIALS
-ARG LOG_PATH
-ARG GMAP_API_KEY
-ARG JWT_SECRET_KEY
+# Build-time secrets (CI 注入)
+ARG EPA_TOKEN CWA_TOKEN ACCESS_TOKEN SECRET OPENAI_TOKEN \
+    GOOGLE_APPLICATION_CREDENTIALS LOG_PATH GMAP_API_KEY JWT_SECRET_KEY
 
-ENV EPA_TOKEN ${EPA_TOKEN}
-ENV CWA_TOKEN ${CWA_TOKEN}
-ENV ACCESS_TOKEN ${ACCESS_TOKEN}
-ENV SECRET ${SECRET}
-ENV OPENAI_TOKEN ${OPENAI_TOKEN}
-ENV GOOGLE_APPLICATION_CREDENTIALS ${GOOGLE_APPLICATION_CREDENTIALS}
-ENV LOG_PATH ${LOG_PATH}
-ENV GMAP_API_KEY ${GMAP_API_KEY}
-ENV JWT_SECRET_KEY ${JWT_SECRET_KEY}
+ENV EPA_TOKEN=${EPA_TOKEN} \
+    CWA_TOKEN=${CWA_TOKEN} \
+    ACCESS_TOKEN=${ACCESS_TOKEN} \
+    SECRET=${SECRET} \
+    OPENAI_TOKEN=${OPENAI_TOKEN} \
+    GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS} \
+    LOG_PATH=${LOG_PATH} \
+    GMAP_API_KEY=${GMAP_API_KEY} \
+    JWT_SECRET_KEY=${JWT_SECRET_KEY}
 
-RUN pip3 install -r requirements.txt &&\
-    apt-get update && apt-get install -y fonts-wqy-zenhei &&\
-    rm -rf /var/lib/apt/lists/* /root/.cache/matplotlib/* &&\
+# 系統依賴（幾乎不變，放最前面最大化 cache）
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends fonts-wqy-zenhei && \
+    rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/log/line-bot
 
-# Copy application code
-COPY app.py app.py
-COPY firestore.py firestore.py
-COPY gcs.py gcs.py
-COPY gss.py gss.py
-COPY lma.py lma.py
-COPY exceptions.py exceptions.py
+# Python 依賴（requirements.txt 變更頻率低於程式碼）
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# 應用程式碼
+COPY *.py ./
+COPY handlers/ handlers/
 COPY middleware/ middleware/
 COPY services/ services/
 COPY api/ api/
 
-# Copy Vue build output
+# Vue build output
 COPY --from=frontend-build /app/dist ./dist
 
 EXPOSE 5000

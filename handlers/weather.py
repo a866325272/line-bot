@@ -1,0 +1,304 @@
+"""氣象相關: 目前天氣、天氣預報、空氣品質、地震、颱風"""
+
+import time
+import requests
+import numpy
+import statistics
+import threading
+
+from config import (
+    CWA_TOKEN, EPA_TOKEN, ACCESS_TOKEN, SCREENSHOT_SERVICE_URL,
+    logger, exception_handler,
+)
+import gcs
+import lma
+
+
+def aqi(address):
+    """空氣品質"""
+    city_list = {}
+    msg = '找不到空氣品質資訊。'
+    try:
+        url = f'https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key={EPA_TOKEN}&limit=1000&sort=ImportDate%20desc&format=JSON'
+        a_data = requests.get(url)
+        a_data_json = a_data.json()
+        for i in a_data_json['records']:
+            city = i['county']
+            if city not in city_list:
+                city_list[city] = []
+            if i['aqi'] != '':
+                aqi_val = int(i['aqi'])
+                city_list[city].append(aqi_val)
+        for i in city_list:
+            if i in address:
+                aqi_val = round(statistics.mean(city_list[i]), 0)
+                if aqi_val <= 50:
+                    aqi_status = '良好'
+                elif aqi_val <= 100:
+                    aqi_status = '普通'
+                elif aqi_val <= 150:
+                    aqi_status = '對敏感族群不健康'
+                elif aqi_val <= 200:
+                    aqi_status = '對所有族群不健康'
+                elif aqi_val <= 300:
+                    aqi_status = '非常不健康'
+                else:
+                    aqi_status = '危害'
+                msg = i + f'空氣品質 :\n{aqi_status} ( AQI {aqi_val} )。'
+                break
+        return msg
+    except:
+        return msg
+
+
+def forecast(address):
+    """氣象預報"""
+    area_list = {}
+    json_api = {
+        "宜蘭縣": "F-D0047-003", "桃園市": "F-D0047-007", "新竹縣": "F-D0047-011",
+        "苗栗縣": "F-D0047-015", "彰化縣": "F-D0047-019", "南投縣": "F-D0047-023",
+        "雲林縣": "F-D0047-027", "嘉義縣": "F-D0047-031", "屏東縣": "F-D0047-035",
+        "臺東縣": "F-D0047-039", "花蓮縣": "F-D0047-043", "澎湖縣": "F-D0047-047",
+        "基隆市": "F-D0047-051", "新竹市": "F-D0047-055", "嘉義市": "F-D0047-059",
+        "臺北市": "F-D0047-063", "高雄市": "F-D0047-067", "新北市": "F-D0047-071",
+        "臺中市": "F-D0047-075", "臺南市": "F-D0047-079", "連江縣": "F-D0047-083",
+        "金門縣": "F-D0047-087",
+    }
+    msg = '找不到天氣預報資訊。'
+    try:
+        url = f'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/F-C0032-001?Authorization={CWA_TOKEN}&downloadType=WEB&format=JSON'
+        f_data = requests.get(url)
+        f_data_json = f_data.json()
+        location = f_data_json['cwaopendata']['dataset']['location']
+        for i in location:
+            city = i['locationName']
+            area_list[city] = ''
+        for i in area_list:
+            if i in address:
+                msg = area_list[i]
+                url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/{json_api[i]}?Authorization={CWA_TOKEN}&elementName=WeatherDescription'
+                f_data = requests.get(url)
+                f_data_json = f_data.json()
+                location = f_data_json['records']['Locations'][0]['Location']
+                city = i
+                break
+        for i in location:
+            area = i['LocationName']
+            starttime = i['WeatherElement'][-1]['Time'][0]['StartTime']
+            endtime = i['WeatherElement'][-1]['Time'][0]['EndTime']
+            starttime = starttime[5:10] + " " + starttime[11:16]
+            endtime = endtime[5:10] + " " + endtime[11:16]
+            wd = i['WeatherElement'][-1]['Time'][0]['ElementValue'][0]['WeatherDescription']
+            starttime1 = i['WeatherElement'][-1]['Time'][1]['StartTime']
+            endtime1 = i['WeatherElement'][-1]['Time'][1]['EndTime']
+            starttime1 = starttime1[5:10] + " " + starttime1[11:16]
+            endtime1 = endtime1[5:10] + " " + endtime1[11:16]
+            wd1 = i['WeatherElement'][-1]['Time'][1]['ElementValue'][0]['WeatherDescription']
+            if area in address:
+                msg = city + area + f'天氣預報 :\n{starttime} ~ {endtime}\n{wd}\n\n{starttime1} ~ {endtime1}\n{wd1}'
+                break
+        return msg
+    except:
+        return msg
+
+
+def current_weather(address):
+    """目前天氣"""
+    city_list, city_list_avg, area_list, area_list2_avg = {}, {}, {}, {}
+    msg = '找不到氣象資訊。'
+
+    def get_data(url):
+        w_data = requests.get(url)
+        w_data_json = w_data.json()
+        stations = w_data_json['cwaopendata']['dataset']['Station']
+        for station in stations:
+            city = station['GeoInfo']['CountyName']
+            area = station['GeoInfo']['TownName']
+            city_area = city + area
+            weather = station['WeatherElement']['Weather']
+            temp = _check_data(station['WeatherElement']['AirTemperature'])
+            humd = _check_data(station['WeatherElement']['RelativeHumidity'])
+            r24 = _check_data(station['WeatherElement']['Now']['Precipitation'])
+            if city_area not in area_list:
+                area_list[city_area] = {'temp': [], 'humd': [], 'r24': [], 'wx': []}
+            if city not in city_list:
+                city_list[city] = {'temp': [], 'humd': [], 'r24': [], 'wx': []}
+            city_list[city]['temp'].append(temp)
+            city_list[city]['humd'].append(humd)
+            city_list[city]['r24'].append(r24)
+            city_list[city]['wx'].append(weather)
+            area_list[city_area]['temp'].append(temp)
+            area_list[city_area]['humd'].append(humd)
+            area_list[city_area]['r24'].append(r24)
+            area_list[city_area]['wx'].append(weather)
+
+    def _check_data(e):
+        return numpy.nan if float(e) < 0 else float(e)
+
+    def _msg_content(loc_list, msg):
+        for loc in loc_list:
+            if loc in address:
+                temp = f"氣溫 {loc_list[loc]['temp']} 度，" if loc_list[loc]['temp'] is not None else ''
+                humd = f"相對濕度 {loc_list[loc]['humd']}%，" if loc_list[loc]['humd'] is not None else ''
+                r24 = f"累積雨量 {loc_list[loc]['r24']}mm，" if loc_list[loc]['r24'] is not None else ''
+                wx = f"{loc_list[loc]['wx'][0]}，" if loc_list[loc]['r24'] is not None else ''
+                description = loc + f'目前天氣 :\n{wx}{temp}{humd}{r24}'.strip('，')
+                msg = f'{description}。'
+                break
+        return msg
+
+    try:
+        get_data(f'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0001-001?Authorization={CWA_TOKEN}&downloadType=WEB&format=JSON')
+        get_data(f'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/O-A0003-001?Authorization={CWA_TOKEN}&downloadType=WEB&format=JSON')
+        for city in city_list:
+            if city not in city_list_avg:
+                city_list_avg[city] = {
+                    'temp': round(numpy.nanmean(city_list[city]['temp']), 1),
+                    'humd': round(numpy.nanmean(city_list[city]['humd']), 1),
+                    'r24': round(numpy.nanmean(city_list[city]['r24']), 1),
+                    'wx': city_list[city]['wx'],
+                }
+        for area in area_list:
+            if area not in area_list2_avg:
+                area_list2_avg[area] = {
+                    'temp': round(numpy.nanmean(area_list[area]['temp']), 1),
+                    'humd': round(numpy.nanmean(area_list[area]['humd']), 1),
+                    'r24': round(numpy.nanmean(area_list[area]['r24']), 1),
+                    'wx': area_list[area]['wx'],
+                }
+        msg = _msg_content(city_list_avg, msg)
+        msg = _msg_content(area_list2_avg, msg)
+        return msg
+    except Exception as e:
+        exception_handler(e)
+        return msg
+
+
+def _create_snapshot_video(sites, framerate, duration, width, height, preview_frames=None, headers=None):
+    """呼叫 screenshot-service 進行截圖錄影"""
+    import os as _os
+    site_list = [[name, url] for name, url in sites]
+    payload = {
+        'sites': site_list,
+        'framerate': framerate,
+        'duration': duration,
+        'width': width,
+        'height': height,
+    }
+    if headers:
+        payload['headers'] = headers
+    logger.info(f'Calling screenshot service: {SCREENSHOT_SERVICE_URL}/capture with sites={[s[0] for s in site_list]}')
+    resp = requests.post(f'{SCREENSHOT_SERVICE_URL}/capture', json=payload, timeout=600)
+    resp.raise_for_status()
+    results = resp.json()['results']
+    logger.info(f'Screenshot service returned: {results}')
+
+    _os.makedirs('pics', exist_ok=True)
+    _os.makedirs('videos', exist_ok=True)
+
+    for item in results:
+        name = item['name']
+        video_resp = requests.get(f'{SCREENSHOT_SERVICE_URL}/download/video/{name}.mp4', timeout=60)
+        with open(f'videos/{name}.mp4', 'wb') as f:
+            f.write(video_resp.content)
+        if preview_frames:
+            for frame_num in preview_frames:
+                frame_filename = f'{name}_{frame_num:03d}.png'
+                img_resp = requests.get(f'{SCREENSHOT_SERVICE_URL}/download/image/{frame_filename}', timeout=60)
+                if img_resp.status_code == 200:
+                    with open(f'pics/{frame_filename}', 'wb') as f:
+                        f.write(img_resp.content)
+
+
+def typhoon(tk: str, ID: str):
+    """颱風預測"""
+    try:
+        ncdr_url = 'https://watch.ncdr.nat.gov.tw/watch_tracks_pro'
+        windy_url = 'https://www.windy.com/?24.939,121.542,5'
+
+        t1 = threading.Thread(target=_create_snapshot_video, args=([('typhoon', ncdr_url)], 4, 30, 1138, 640), kwargs={'preview_frames': [18]})
+        t2 = threading.Thread(target=_create_snapshot_video, args=([('windy', windy_url)], 4, 30, 1138, 640), kwargs={'preview_frames': [18]})
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/typhoon.mp4", f'typhoon/typhoon{tk}.mp4')
+        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/typhoon_018.png", f'typhoon/typhoon{tk}.png')
+        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/windy.mp4", f'typhoon/windy{tk}.mp4')
+        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/windy_018.png", f'typhoon/windy{tk}.png')
+        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.mp4')
+        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.png')
+        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/windy{tk}.mp4')
+        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/windy{tk}.png')
+        ncdr_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png'
+        ncdr_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4'
+        windy_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.png'
+        windy_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.mp4'
+        msg = f'NCDR路徑預測: {ncdr_url}\nWindy風地圖: {windy_url}'
+        reply_msg = (
+            {'type': 'text', 'text': msg},
+            {'type': 'video', 'originalContentUrl': ncdr_video, 'previewImageUrl': ncdr_img},
+            {'type': 'video', 'originalContentUrl': windy_video, 'previewImageUrl': windy_img},
+        )
+        lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)
+    except Exception as e:
+        exception_handler(e)
+
+
+def earthquake(tk: str):
+    """地震資訊"""
+    try:
+        earthquake_yturl = 'https://www.youtube.com/embed/KyT4qSK8lJo?autoplay=1&controls=0&rel=0&modestbranding=1'
+        _create_snapshot_video(
+            [('earthquake', earthquake_yturl)], 6, 10, 1280, 720,
+            preview_frames=[24], headers={"Referer": "https://www.google.com/"}
+        )
+
+        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/earthquake.mp4", f'earthquake/earthquake{tk}.mp4')
+        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/earthquake_024.png", f'earthquake/earthquake{tk}.png')
+        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'earthquake/earthquake{tk}.mp4')
+        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'earthquake/earthquake{tk}.png')
+
+        url = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={CWA_TOKEN}'
+        url2 = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization={CWA_TOKEN}'
+        e_data = requests.get(url)
+        e_data_json = e_data.json()
+        e_data2 = requests.get(url2)
+        e_data_json2 = e_data2.json()
+        eq = e_data_json['records']['Earthquake']
+        eq2 = e_data_json2['records']['Earthquake']
+
+        for i in eq:
+            loc = i['EarthquakeInfo']['Epicenter']['Location']
+            val = i['EarthquakeInfo']['EarthquakeMagnitude']['MagnitudeValue']
+            dep = i['EarthquakeInfo']['FocalDepth']
+            eq_time = i['EarthquakeInfo']['OriginTime']
+            img = i['ReportImageURI']
+            break
+        for i in eq2:
+            loc2 = i['EarthquakeInfo']['Epicenter']['Location']
+            val2 = i['EarthquakeInfo']['EarthquakeMagnitude']['MagnitudeValue']
+            dep2 = i['EarthquakeInfo']['FocalDepth']
+            eq_time2 = i['EarthquakeInfo']['OriginTime']
+            img2 = i['ReportImageURI']
+            break
+
+        if eq_time > eq_time2:
+            msg_text = f'地震即時監控: {earthquake_yturl}\n地震報告: {loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。'
+            report_img = img
+        else:
+            msg_text = f'地震即時監控: {earthquake_yturl}\n地震報告: {loc2}，芮氏規模 {val2} 級，深度 {dep2} 公里，發生時間 {eq_time2}。'
+            report_img = img2
+
+        earthquake_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/earthquake/earthquake{tk}.png'
+        earthquake_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/earthquake/earthquake{tk}.mp4'
+        reply_msg = (
+            {"type": "text", "text": msg_text},
+            {'type': 'image', 'originalContentUrl': earthquake_img, 'previewImageUrl': earthquake_img},
+            {'type': 'video', 'originalContentUrl': earthquake_video, 'previewImageUrl': earthquake_img},
+            {'type': 'image', 'originalContentUrl': report_img, 'previewImageUrl': report_img},
+        )
+        lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)
+    except Exception as e:
+        exception_handler(e)

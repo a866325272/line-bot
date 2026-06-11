@@ -55,6 +55,8 @@ def reply_message(msg, rk, token):
     }
     req = requests.request('POST', 'https://api.line.me/v2/bot/message/reply', headers=headers,data=json.dumps(body).encode('utf-8'))
     logger.info("reply_msg:"+msg)
+    if req.status_code != 200:
+        logger.warning(f"reply_msg error: {req.status_code} {req.text}")
 
 # LINE 回傳訊息複數函式
 def reply_multi_message(msg, rk, token):
