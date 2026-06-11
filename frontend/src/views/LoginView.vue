@@ -1,21 +1,21 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
       <!-- Header -->
       <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-900">記帳 Web UI</h1>
-        <p class="mt-2 text-sm text-gray-600">管理你的收支記錄</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">記帳 Web UI</h1>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">管理你的收支記錄</p>
       </div>
 
       <!-- Tab 切換 -->
-      <div class="flex border-b border-gray-200">
+      <div class="flex border-b border-gray-200 dark:border-gray-700">
         <button
           @click="activeTab = 'login'"
           :class="[
             'flex-1 py-3 text-center font-medium text-sm border-b-2 transition-colors',
             activeTab === 'login'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           ]"
         >
           登入
@@ -25,8 +25,8 @@
           :class="[
             'flex-1 py-3 text-center font-medium text-sm border-b-2 transition-colors',
             activeTab === 'register'
-              ? 'border-indigo-500 text-indigo-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           ]"
         >
           註冊
@@ -34,33 +34,33 @@
       </div>
 
       <!-- 錯誤訊息 -->
-      <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+      <div v-if="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-md text-sm">
         {{ error }}
       </div>
 
       <!-- 登入表單 -->
       <form v-if="activeTab === 'login'" @submit.prevent="handleLogin" class="space-y-4">
         <div>
-          <label for="login-username" class="block text-sm font-medium text-gray-700">使用者名稱</label>
+          <label for="login-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">使用者名稱</label>
           <input
             id="login-username"
             v-model="loginForm.username"
             type="text"
             required
             autocomplete="username"
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             placeholder="輸入使用者名稱"
           />
         </div>
         <div>
-          <label for="login-password" class="block text-sm font-medium text-gray-700">密碼</label>
+          <label for="login-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">密碼</label>
           <input
             id="login-password"
             v-model="loginForm.password"
             type="password"
             required
             autocomplete="current-password"
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             placeholder="輸入密碼"
           />
         </div>
@@ -76,63 +76,63 @@
       <!-- 註冊表單 -->
       <form v-if="activeTab === 'register'" @submit.prevent="handleRegister" class="space-y-4">
         <div>
-          <label for="reg-username" class="block text-sm font-medium text-gray-700">使用者名稱</label>
+          <label for="reg-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">使用者名稱</label>
           <input
             id="reg-username"
             v-model="registerForm.username"
             type="text"
             required
             autocomplete="username"
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             placeholder="至少 3 個字元"
           />
         </div>
         <div>
-          <label for="reg-password" class="block text-sm font-medium text-gray-700">密碼</label>
+          <label for="reg-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">密碼</label>
           <input
             id="reg-password"
             v-model="registerForm.password"
             type="password"
             required
             autocomplete="new-password"
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             placeholder="至少 8 字元，含大小寫和數字"
           />
         </div>
         <div>
-          <label for="reg-confirm" class="block text-sm font-medium text-gray-700">確認密碼</label>
+          <label for="reg-confirm" class="block text-sm font-medium text-gray-700 dark:text-gray-300">確認密碼</label>
           <input
             id="reg-confirm"
             v-model="registerForm.confirmPassword"
             type="password"
             required
             autocomplete="new-password"
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             placeholder="再次輸入密碼"
           />
         </div>
 
-        <!-- 進階選項：綁定現有 Firestore Document -->
+        <!-- 進階選項 -->
         <div>
           <button
             type="button"
             @click="showAdvanced = !showAdvanced"
-            class="text-sm text-indigo-600 hover:text-indigo-500"
+            class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
           >
             {{ showAdvanced ? '▼ 隱藏進階選項' : '▶ 進階選項（綁定現有資料）' }}
           </button>
           <div v-if="showAdvanced" class="mt-2">
-            <label for="reg-docid" class="block text-sm font-medium text-gray-700">
+            <label for="reg-docid" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Firestore Document ID（選填）
             </label>
             <input
               id="reg-docid"
               v-model="registerForm.firestoreDocId"
               type="text"
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               placeholder="留空則自動建立新的"
             />
-            <p class="mt-1 text-xs text-gray-500">如果你已有 LINE Bot 記帳資料，填入對應的 Document ID 即可綁定</p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">如果你已有 LINE Bot 記帳資料，填入對應的 Document ID 即可綁定</p>
           </div>
         </div>
 
@@ -187,7 +187,6 @@ async function handleLogin() {
 async function handleRegister() {
   error.value = null
 
-  // 前端驗證
   if (registerForm.value.password !== registerForm.value.confirmPassword) {
     error.value = '兩次密碼不一致'
     return

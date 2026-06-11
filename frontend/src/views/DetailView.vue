@@ -1,40 +1,40 @@
 <template>
   <div>
-    <h2 class="text-2xl font-bold text-gray-900">明細列表</h2>
+    <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">明細列表</h2>
 
     <!-- 日期區間選擇 + 匯出 -->
-    <div class="mt-4 bg-white shadow rounded-lg p-4">
+    <div class="mt-4 bg-white dark:bg-gray-800 shadow rounded-lg p-4">
       <div class="flex flex-wrap items-end gap-3">
         <div>
-          <label class="block text-xs font-medium text-gray-500">起始日期</label>
+          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">起始日期</label>
           <input v-model="startDate" type="date"
-            class="mt-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500" />
+            class="mt-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500">結束日期</label>
+          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">結束日期</label>
           <input v-model="endDate" type="date"
-            class="mt-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500" />
+            class="mt-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
         </div>
         <button @click="loadData" :disabled="loading"
           class="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 disabled:opacity-50">
           查詢
         </button>
         <div class="flex gap-2">
-          <button @click="setPreset('thisMonth')" class="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">本月</button>
-          <button @click="setPreset('lastMonth')" class="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">上月</button>
-          <button @click="setPreset('last3')" class="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50">近3月</button>
+          <button @click="setPreset('thisMonth')" class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">本月</button>
+          <button @click="setPreset('lastMonth')" class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">上月</button>
+          <button @click="setPreset('last3')" class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">近3月</button>
         </div>
 
         <!-- 匯出（按月匯出） -->
         <div class="ml-auto">
           <div class="flex items-center gap-2">
-            <select v-model="exportMonth" class="px-2 py-1.5 border border-gray-300 rounded-md text-sm">
+            <select v-model="exportMonth" class="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
               <option v-for="m in availableMonths" :key="m" :value="m">{{ m.replace('_', '/') }}</option>
             </select>
             <button
               @click="handleExport"
               :disabled="exporting"
-              class="px-3 py-1.5 border border-gray-300 text-sm rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              class="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-sm rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
             >
               {{ exporting ? '匯出中...' : '📤 匯出' }}
             </button>
@@ -44,29 +44,29 @@
     </div>
 
     <!-- 匯出成功 -->
-    <div v-if="exportUrl" class="mt-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+    <div v-if="exportUrl" class="mt-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded-md text-sm">
       匯出成功！<a :href="exportUrl" target="_blank" class="underline font-medium">點此開啟 Spreadsheet</a>
     </div>
 
     <!-- 錯誤 -->
-    <div v-if="error" class="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+    <div v-if="error" class="mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-md text-sm">
       {{ error }}
     </div>
 
     <!-- 記錄數 -->
-    <p class="mt-4 text-sm text-gray-500">共 {{ accounts.length }} 筆記錄</p>
+    <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">共 {{ accounts.length }} 筆記錄</p>
 
     <!-- 表格 -->
-    <div class="mt-2 bg-white shadow rounded-lg overflow-hidden">
+    <div class="mt-2 bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
       <DataTable :columns="columns" :data="accounts" empty-text="此區間沒有記帳記錄">
         <template #cell-type="{ value }">
           <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                :class="value === 11 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
+                :class="value === 11 ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'">
             {{ getCategoryName(value) }}
           </span>
         </template>
         <template #cell-amount="{ row }">
-          <span :class="row.type === 11 ? 'text-green-600' : 'text-red-600'">
+          <span :class="row.type === 11 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
             {{ row.type === 11 ? '+' : '-' }}${{ row.amount }}
           </span>
         </template>
@@ -74,8 +74,8 @@
           {{ formatDate(value) }}
         </template>
         <template #actions="{ row }">
-          <button @click="startEdit(row)" class="text-indigo-600 hover:text-indigo-900 mr-3 text-sm">編輯</button>
-          <button @click="confirmDelete(row)" class="text-red-600 hover:text-red-900 text-sm">刪除</button>
+          <button @click="startEdit(row)" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 mr-3 text-sm">編輯</button>
+          <button @click="confirmDelete(row)" class="text-red-600 dark:text-red-400 hover:text-red-900 text-sm">刪除</button>
         </template>
       </DataTable>
     </div>
@@ -83,34 +83,34 @@
     <!-- 編輯 Modal -->
     <div v-if="editingRow" class="fixed inset-0 z-50 flex items-center justify-center">
       <div class="fixed inset-0 bg-black bg-opacity-50" @click="editingRow = null"></div>
-      <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-        <h3 class="text-lg font-medium text-gray-900">編輯記錄</h3>
+      <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">編輯記錄</h3>
         <form @submit.prevent="handleUpdate" class="mt-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700">項目名稱</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">項目名稱</label>
             <input v-model="editForm.name" type="text" required
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">金額</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">金額</label>
             <input v-model.number="editForm.amount" type="number" step="0.01" min="0.01" required
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">類別</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">類別</label>
             <select v-model.number="editForm.type" required
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-              <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <option v-for="cat in categoriesList" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">日期</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">日期</label>
             <input v-model="editForm.date" type="date" required
-              class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+              class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
           </div>
           <div class="flex justify-end space-x-3">
             <button type="button" @click="editingRow = null"
-              class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">取消</button>
+              class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600">取消</button>
             <button type="submit" :disabled="saving"
               class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50">
               {{ saving ? '儲存中...' : '儲存' }}
@@ -136,6 +136,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { accountsApi } from '../api/accounts'
 import { exportApi } from '../api/export'
+import { categoriesApi } from '../api/categories'
 import DataTable from '../components/DataTable.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 
@@ -149,7 +150,8 @@ const editForm = ref({ name: '', amount: 0, type: 1, date: '' })
 const exporting = ref(false)
 const exportUrl = ref(null)
 
-const categories = [
+// 從 API 載入類別
+const categoriesList = ref([
   { id: 1, name: '飲食' },
   { id: 2, name: '生活' },
   { id: 3, name: '居住' },
@@ -159,7 +161,7 @@ const categories = [
   { id: 7, name: '其他' },
   { id: 8, name: '投資' },
   { id: 11, name: '收入' },
-]
+])
 
 const columns = [
   { key: 'date', label: '日期' },
@@ -168,13 +170,27 @@ const columns = [
   { key: 'type', label: '類別' },
 ]
 
-// 預設日期：本月
-const now = new Date()
-const startDate = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`)
-const endDate = ref(now.toISOString().split('T')[0])
+// 使用 UTC+8 取得今天日期
+function getTodayUTC8() {
+  const now = new Date()
+  const utc8Offset = 8 * 60
+  const localOffset = now.getTimezoneOffset()
+  return new Date(now.getTime() + (utc8Offset + localOffset) * 60 * 1000)
+}
+
+function formatDateStr(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+const today = getTodayUTC8()
+const startDate = ref(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`)
+const endDate = ref(formatDateStr(today))
 
 // 匯出用的月份選擇
-const exportMonth = ref(`${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`)
+const exportMonth = ref(`${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}`)
 
 // 從查詢結果中提取可用月份（供匯出選擇）
 const availableMonths = computed(() => {
@@ -189,7 +205,7 @@ const availableMonths = computed(() => {
 })
 
 function getCategoryName(typeId) {
-  return categories.find(c => c.id === typeId)?.name || `類別${typeId}`
+  return categoriesList.value.find(c => c.id === typeId)?.name || `類別${typeId}`
 }
 
 function formatDate(dateStr) {
@@ -198,14 +214,14 @@ function formatDate(dateStr) {
 }
 
 function setPreset(preset) {
-  const today = new Date()
-  const y = today.getFullYear()
-  const m = today.getMonth() + 1
+  const now = getTodayUTC8()
+  const y = now.getFullYear()
+  const m = now.getMonth() + 1
 
   switch (preset) {
     case 'thisMonth':
       startDate.value = `${y}-${String(m).padStart(2, '0')}-01`
-      endDate.value = today.toISOString().split('T')[0]
+      endDate.value = formatDateStr(now)
       break
     case 'lastMonth': {
       const lm = m === 1 ? 12 : m - 1
@@ -217,8 +233,8 @@ function setPreset(preset) {
     }
     case 'last3': {
       const s = new Date(y, m - 3, 1)
-      startDate.value = s.toISOString().split('T')[0]
-      endDate.value = today.toISOString().split('T')[0]
+      startDate.value = formatDateStr(s)
+      endDate.value = formatDateStr(now)
       break
     }
   }
@@ -234,7 +250,6 @@ async function loadData() {
     const ed = endDate.value.replace(/-/g, '_')
     const result = await accountsApi.getAccountsRange(sd, ed)
     accounts.value = result.accounts
-    // 更新匯出月份為結果中最新的月份
     if (availableMonths.value.length > 0) {
       exportMonth.value = availableMonths.value[0]
     }
@@ -305,5 +320,11 @@ async function handleExport() {
   }
 }
 
-onMounted(loadData)
+onMounted(async () => {
+  try {
+    const result = await categoriesApi.getCategories()
+    categoriesList.value = result.categories
+  } catch {}
+  loadData()
+})
 </script>
