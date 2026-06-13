@@ -209,6 +209,155 @@ def radar_video(tk: str):
         lma.reply_message('雷達回波動態圖產生失敗，請稍後再試。', tk, ACCESS_TOKEN)
 
 
+def satellite_video(tk: str):
+    """拉取最近 6 小時的衛星雲圖，合成 mp4 影片，回傳預覽圖 + Flex Video。
+
+    氣象署每 10 分鐘產出一張衛星雲圖，6 小時 = 36 張。
+    URL 格式: https://www.cwa.gov.tw/Data/satellite/TWI_IR1_CR_800/TWI_IR1_CR_800-{YYYY}-{MM}-{DD}-{HH}-{mm}.jpg
+    """
+    import imageio.v3 as iio
+    from PIL import Image
+
+    try:
+        tz = timezone(timedelta(hours=8))
+        now = datetime.now(tz)
+        minute = (now.minute // 10) * 10
+        latest = now.replace(minute=minute, second=0, microsecond=0)
+
+        # 往回取 6 小時 (36 張)，從舊到新排列
+        timestamps = []
+        for i in range(36, 0, -1):
+            t = latest - timedelta(minutes=i * 10)
+            timestamps.append(t)
+
+        # 並行下載所有圖片
+        session = requests.Session()
+        session.verify = False
+
+        def _download(t):
+            ts_str = t.strftime('%Y-%m-%d-%H-%M')
+            url = f'https://www.cwa.gov.tw/Data/satellite/TWI_IR1_CR_800/TWI_IR1_CR_800-{ts_str}.jpg'
+            try:
+                resp = session.get(url, timeout=15)
+                if resp.status_code == 200:
+                    return (t, resp.content)
+                else:
+                    logger.warning(f'satellite_video: skip {ts_str}, status={resp.status_code}')
+            except Exception as e:
+                logger.warning(f'satellite_video: failed to download {ts_str}: {e}')
+            return (t, None)
+
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            results = list(executor.map(_download, timestamps))
+
+        # resize 並轉成 numpy array
+        frames = []
+        last_full_content = None
+        for t, content in results:
+            if content:
+                img = Image.open(io.BytesIO(content))
+                img = img.resize((768, 768), Image.LANCZOS).convert('RGB')
+                frames.append(numpy.array(img))
+                last_full_content = content
+
+        if not frames:
+            lma.reply_message('無法取得衛星雲圖資料。', tk, ACCESS_TOKEN)
+            return
+
+        # 合成 mp4（fps=6，36 張約 6 秒 + 最後停頓）
+        os.makedirs('videos', exist_ok=True)
+        mp4_filename = f'satellite_{tk}.mp4'
+        local_path = f'videos/{mp4_filename}'
+
+        # 最後一張多重複 4 幀讓觀看者看清最新狀態
+        frames_with_pause = frames + [frames[-1]] * 4
+        iio.imwrite(local_path, frames_with_pause, fps=6, codec='libx264')
+
+        # 最新一張的 1024x1024 預覽圖
+        preview_filename = f'satellite_{tk}_preview.jpg'
+        preview_path = f'videos/{preview_filename}'
+        preview_img = Image.open(io.BytesIO(last_full_content))
+        preview_img = preview_img.resize((1024, 1024), Image.LANCZOS).convert('RGB')
+        preview_img.save(preview_path, format='JPEG', quality=85)
+
+        # 上傳 GCS
+        bucket = "asia.artifacts.watermelon-368305.appspot.com"
+        gcs_video_path = f'satellite/{mp4_filename}'
+        gcs_preview_path = f'satellite/{preview_filename}'
+
+        gcs.upload_blob(bucket, local_path, gcs_video_path)
+        gcs.make_blob_public(bucket, gcs_video_path)
+        gcs.upload_blob(bucket, preview_path, gcs_preview_path)
+        gcs.make_blob_public(bucket, gcs_preview_path)
+
+        video_url = f'https://storage.googleapis.com/{bucket}/{gcs_video_path}'
+        preview_url = f'https://storage.googleapis.com/{bucket}/{gcs_preview_path}'
+
+        # 回傳：靜態預覽圖 + Flex Video
+        time_range = f"{timestamps[0].strftime('%H:%M')} ~ {timestamps[-1].strftime('%H:%M')}"
+        flex_content = {
+            "type": "bubble",
+            "size": "mega",
+            "hero": {
+                "type": "video",
+                "url": video_url,
+                "previewUrl": preview_url,
+                "altContent": {
+                    "type": "image",
+                    "size": "full",
+                    "aspectRatio": "1:1",
+                    "aspectMode": "cover",
+                    "url": preview_url,
+                },
+                "aspectRatio": "1:1",
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "paddingAll": "8px",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "衛星雲圖動態圖（近 6 小時）",
+                        "weight": "bold",
+                        "size": "sm",
+                    },
+                    {
+                        "type": "text",
+                        "text": time_range,
+                        "size": "xs",
+                        "color": "#888888",
+                    },
+                ],
+            },
+        }
+
+        reply_msg = (
+            {
+                "type": "image",
+                "originalContentUrl": preview_url,
+                "previewImageUrl": preview_url,
+            },
+            {
+                "type": "flex",
+                "altText": f"衛星雲圖動態圖 {time_range}",
+                "contents": flex_content,
+            },
+        )
+        lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)
+
+        # 清理本地檔案
+        for f in (local_path, preview_path):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+
+    except Exception as e:
+        exception_handler(e)
+        lma.reply_message('衛星雲圖動態圖產生失敗，請稍後再試。', tk, ACCESS_TOKEN)
+
+
 def forecast(address):
     """氣象預報"""
     area_list = {}

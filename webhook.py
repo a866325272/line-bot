@@ -11,7 +11,7 @@ from config import SECRET, ACCESS_TOKEN, logger, exception_handler
 import firestore
 import lma
 
-from handlers.weather import current_weather, aqi, forecast, earthquake, earthquake_yt, typhoon, radar_video
+from handlers.weather import current_weather, aqi, forecast, earthquake, earthquake_yt, typhoon, radar_video, satellite_video
 from handlers.accounting import accounting, account_monthly, account_detail
 from handlers.news import news
 from handlers.crypto import get_cryptocurrency_market, cryptocurrency
@@ -128,8 +128,8 @@ def _handle_text(text: str, tk: str, client: str, ID: str):
     # 氣象類
     if text in ('雷達', '雷達回波'):
         radar_video(tk)
-    elif text == '衛星雲圖':
-        lma.reply_image(f'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-C0042-002.jpg?{time.time_ns()}', tk, ACCESS_TOKEN)
+    elif text in ('衛星雲圖', '雲圖'):
+        satellite_video(tk)
     elif text == '颱風':
         typhoon(tk, ID)
     elif text in ('地震資訊', '地震'):
