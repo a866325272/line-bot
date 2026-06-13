@@ -392,11 +392,46 @@ def typhoon(tk: str, ID: str):
         ncdr_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4'
         windy_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.png'
         windy_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.mp4'
-        msg = f'NCDR路徑預測: {ncdr_url}\nWindy風地圖: {windy_url}'
+
+        def _video_bubble(title, subtitle, video_url, preview_url):
+            return {
+                "type": "bubble",
+                "size": "mega",
+                "hero": {
+                    "type": "video",
+                    "url": video_url,
+                    "previewUrl": preview_url,
+                    "altContent": {
+                        "type": "image",
+                        "size": "full",
+                        "aspectRatio": "16:9",
+                        "aspectMode": "cover",
+                        "url": preview_url,
+                    },
+                    "aspectRatio": "16:9",
+                },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {"type": "text", "text": title, "weight": "bold", "size": "md"},
+                        {"type": "text", "text": subtitle, "size": "sm", "color": "#888888"},
+                    ],
+                },
+            }
+
         reply_msg = (
-            {'type': 'text', 'text': msg},
-            {'type': 'video', 'originalContentUrl': ncdr_video, 'previewImageUrl': ncdr_img},
-            {'type': 'video', 'originalContentUrl': windy_video, 'previewImageUrl': windy_img},
+            {"type": "text", "text": f"NCDR路徑預測: {ncdr_url}\nWindy風地圖: {windy_url}"},
+            {
+                "type": "flex",
+                "altText": "颱風路徑預測 - NCDR",
+                "contents": _video_bubble("NCDR 颱風路徑預測", ncdr_url, ncdr_video, ncdr_img),
+            },
+            {
+                "type": "flex",
+                "altText": "颱風風場 - Windy",
+                "contents": _video_bubble("Windy 風場地圖", windy_url, windy_video, windy_img),
+            },
         )
         lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)
     except Exception as e:
@@ -442,18 +477,48 @@ def earthquake(tk: str):
             break
 
         if eq_time > eq_time2:
-            msg_text = f'地震即時監控: {earthquake_yturl}\n地震報告: {loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。'
+            msg_text = f'地震報告: {loc}，芮氏規模 {val} 級，深度 {dep} 公里，發生時間 {eq_time}。'
             report_img = img
         else:
-            msg_text = f'地震即時監控: {earthquake_yturl}\n地震報告: {loc2}，芮氏規模 {val2} 級，深度 {dep2} 公里，發生時間 {eq_time2}。'
+            msg_text = f'地震報告: {loc2}，芮氏規模 {val2} 級，深度 {dep2} 公里，發生時間 {eq_time2}。'
             report_img = img2
 
         earthquake_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/earthquake/earthquake{tk}.png'
         earthquake_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/earthquake/earthquake{tk}.mp4'
+
+        flex_video = {
+            "type": "bubble",
+            "size": "mega",
+            "hero": {
+                "type": "video",
+                "url": earthquake_video,
+                "previewUrl": earthquake_img,
+                "altContent": {
+                    "type": "image",
+                    "size": "full",
+                    "aspectRatio": "16:9",
+                    "aspectMode": "cover",
+                    "url": earthquake_img,
+                },
+                "aspectRatio": "16:9",
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {"type": "text", "text": "地震即時監控", "weight": "bold", "size": "md"},
+                    {"type": "text", "text": "YouTube 即時地震監測畫面", "size": "sm", "color": "#888888"},
+                ],
+            },
+        }
+
         reply_msg = (
             {"type": "text", "text": msg_text},
-            {'type': 'image', 'originalContentUrl': earthquake_img, 'previewImageUrl': earthquake_img},
-            {'type': 'video', 'originalContentUrl': earthquake_video, 'previewImageUrl': earthquake_img},
+            {
+                "type": "flex",
+                "altText": "地震即時監控",
+                "contents": flex_video,
+            },
             {'type': 'image', 'originalContentUrl': report_img, 'previewImageUrl': report_img},
         )
         lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)

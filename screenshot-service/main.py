@@ -81,7 +81,7 @@ def capture():
                 extra_http_headers=extra_headers
             )
             page = context.new_page()
-            page.goto(url, wait_until='networkidle', timeout=60000)
+            page.goto(url, wait_until='load', timeout=60000)
 
             num_frames = framerate * duration
             frame_interval = 1.0 / framerate
