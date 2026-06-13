@@ -74,7 +74,7 @@ def capture():
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(
                 headless=True,
-                args=['--no-sandbox', '--use-angle=swiftshader']
+                args=['--no-sandbox', '--use-angle=swiftshader', '--autoplay-policy=no-user-gesture-required']
             )
             context = browser.new_context(
                 viewport={'width': width, 'height': height},
