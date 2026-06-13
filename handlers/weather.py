@@ -165,17 +165,18 @@ def radar_video(tk: str):
             "body": {
                 "type": "box",
                 "layout": "vertical",
+                "paddingAll": "8px",
                 "contents": [
                     {
                         "type": "text",
                         "text": "雷達回波動態圖（近 6 小時）",
                         "weight": "bold",
-                        "size": "md",
+                        "size": "sm",
                     },
                     {
                         "type": "text",
                         "text": time_range,
-                        "size": "sm",
+                        "size": "xs",
                         "color": "#888888",
                     },
                 ],
@@ -413,9 +414,10 @@ def typhoon(tk: str, ID: str):
                 "body": {
                     "type": "box",
                     "layout": "vertical",
+                    "paddingAll": "8px",
                     "contents": [
-                        {"type": "text", "text": title, "weight": "bold", "size": "md"},
-                        {"type": "text", "text": subtitle, "size": "sm", "color": "#888888"},
+                        {"type": "text", "text": title, "weight": "bold", "size": "sm"},
+                        {"type": "text", "text": subtitle, "size": "xs", "color": "#888888"},
                     ],
                 },
             }
@@ -505,9 +507,10 @@ def earthquake(tk: str):
             "body": {
                 "type": "box",
                 "layout": "vertical",
+                "paddingAll": "8px",
                 "contents": [
-                    {"type": "text", "text": "地震即時監控", "weight": "bold", "size": "md"},
-                    {"type": "text", "text": "YouTube 即時地震監測畫面", "size": "sm", "color": "#888888"},
+                    {"type": "text", "text": "地震即時監控", "weight": "bold", "size": "sm"},
+                    {"type": "text", "text": "YouTube 即時地震監測畫面", "size": "xs", "color": "#888888"},
                 ],
             },
         }
