@@ -90,11 +90,48 @@ pipeline {
             }
         }
 
+        // Earthquake Service - 只在相關檔案有改動時才執行
+        stage('Build Earthquake Service') {
+            when {
+                changeset "earthquake-service/**"
+            }
+            steps {
+                sh "echo 'start building earthquake service...'"
+                sh '''docker build -t ${REPO_URL}/jeff/line-bot/earthquake-service:${MAJOR_VERSION}.${BUILD_NUMBER} \
+                    --no-cache \
+                    -f earthquake-service/Dockerfile earthquake-service/'''
+            }
+        }
+        stage('Push Earthquake Service') {
+            when {
+                changeset "earthquake-service/**"
+            }
+            steps {
+                sh "docker push ${REPO_URL}/jeff/line-bot/earthquake-service:${MAJOR_VERSION}.${BUILD_NUMBER}"
+                sh "docker tag ${REPO_URL}/jeff/line-bot/earthquake-service:${MAJOR_VERSION}.${BUILD_NUMBER} ${REPO_URL}/jeff/line-bot/earthquake-service:latest"
+                sh "docker push ${REPO_URL}/jeff/line-bot/earthquake-service:latest"
+                sh "docker rmi ${REPO_URL}/jeff/line-bot/earthquake-service:${MAJOR_VERSION}.${BUILD_NUMBER} || true"
+                sh "docker rmi ${REPO_URL}/jeff/line-bot/earthquake-service:latest || true"
+            }
+        }
+        stage('Deploy Earthquake Service') {
+            when {
+                changeset "earthquake-service/**"
+            }
+            steps {
+                sh "echo 'deploying earthquake service...'"
+                sh "ssh -i ${SSH_KEY} root@${DEPLOY_DEST} sed -i 's+${REPO_URL}/jeff/line-bot/earthquake-service.*+${REPO_URL}/jeff/line-bot/earthquake-service:${MAJOR_VERSION}.${BUILD_NUMBER}+g' ${DOCKER_COMPOSE_FILE}"
+                sh "ssh -i ${SSH_KEY} root@${DEPLOY_DEST} /usr/local/bin/docker-compose -f ${DOCKER_COMPOSE_FILE} pull earthquake-service"
+                sh "ssh -i ${SSH_KEY} root@${DEPLOY_DEST} /usr/local/bin/docker-compose -f ${DOCKER_COMPOSE_FILE} up -d --no-deps earthquake-service"
+            }
+        }
+
         stage('Cleanup') {
             steps {
                 // 刪除舊版 image（保留目前使用中的版本）
                 sh "docker images '${REPO_URL}/jeff/line-bot' --format '{{.ID}} {{.Tag}}' | grep -v '${MAJOR_VERSION}.${BUILD_NUMBER}' | awk '{print \$1}' | xargs -r docker rmi -f || true"
                 sh "docker images '${REPO_URL}/jeff/line-bot/screenshot-service' --format '{{.ID}} {{.Tag}}' | grep -v '${MAJOR_VERSION}.${BUILD_NUMBER}' | awk '{print \$1}' | xargs -r docker rmi -f || true"
+                sh "docker images '${REPO_URL}/jeff/line-bot/earthquake-service' --format '{{.ID}} {{.Tag}}' | grep -v '${MAJOR_VERSION}.${BUILD_NUMBER}' | awk '{print \$1}' | xargs -r docker rmi -f || true"
                 sh "docker image prune -f"
             }
         }

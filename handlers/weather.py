@@ -441,7 +441,151 @@ def typhoon(tk: str, ID: str):
 
 
 def earthquake(tk: str):
-    """地震資訊"""
+    """地震資訊 — 使用 ExpTech API + CWA 氣象署 API + earthquake-service 即時資料"""
+    try:
+        EARTHQUAKE_SERVICE_URL = os.environ.get('EARTHQUAKE_SERVICE_URL', 'http://earthquake-service:5002')
+
+        # --- 1. 查詢 earthquake-service 取得即時 EEW 和最新報告 ---
+        eew_alert = None
+        exptech_reports = None
+        try:
+            latest_resp = requests.get(f"{EARTHQUAKE_SERVICE_URL}/latest", timeout=5)
+            if latest_resp.status_code == 200:
+                latest_data = latest_resp.json()
+                if latest_data.get("has_eew") and latest_data.get("eew"):
+                    eew_alert = latest_data["eew"]
+        except Exception:
+            logger.info("earthquake-service unavailable, falling back to direct API")
+
+        # --- 2. 從 ExpTech API 取得最新地震報告清單（作為 fallback）---
+        if not exptech_reports:
+            EXPTECH_API_URLS = [
+                "https://api.core-tnn1.exptech.dev",
+                "https://api.core-tyo1.exptech.dev",
+                "https://api.lb.exptech.dev",
+            ]
+            for base_url in EXPTECH_API_URLS:
+                try:
+                    resp = requests.get(f"{base_url}/api/v2/eq/report?limit=5", timeout=10)
+                    if resp.status_code == 200:
+                        exptech_reports = resp.json()
+                        break
+                except Exception:
+                    continue
+
+        # --- 3. 從 CWA 氣象署 API 取得地震報告（含官方報告圖片）---
+        url_significant = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={CWA_TOKEN}'
+        url_minor = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization={CWA_TOKEN}'
+        e_data = requests.get(url_significant, timeout=15)
+        e_data_json = e_data.json()
+        e_data2 = requests.get(url_minor, timeout=15)
+        e_data_json2 = e_data2.json()
+        eq_significant = e_data_json['records']['Earthquake']
+        eq_minor = e_data_json2['records']['Earthquake']
+
+        # 取兩個資料來源中最新的那筆
+        latest_significant = eq_significant[0] if eq_significant else None
+        latest_minor = eq_minor[0] if eq_minor else None
+
+        if latest_significant and latest_minor:
+            time_sig = latest_significant['EarthquakeInfo']['OriginTime']
+            time_minor = latest_minor['EarthquakeInfo']['OriginTime']
+            latest = latest_significant if time_sig > time_minor else latest_minor
+        elif latest_significant:
+            latest = latest_significant
+        else:
+            latest = latest_minor
+
+        loc = latest['EarthquakeInfo']['Epicenter']['Location']
+        mag = latest['EarthquakeInfo']['EarthquakeMagnitude']['MagnitudeValue']
+        dep = latest['EarthquakeInfo']['FocalDepth']
+        eq_time = latest['EarthquakeInfo']['OriginTime']
+        report_img = latest['ReportImageURI']
+
+        # --- 4. 組合回覆訊息 ---
+        # 如果有即時 EEW 速報，加上警報訊息
+        if eew_alert:
+            eew_info = eew_alert[0] if isinstance(eew_alert, list) and eew_alert else eew_alert
+            if isinstance(eew_info, dict) and eew_info.get("eq"):
+                eq_info = eew_info["eq"]
+                eew_text = (
+                    f"🚨 地震速報（EEW）正在發生！\n"
+                    f"📍 震央: {eq_info.get('loc', '未知')}\n"
+                    f"📏 預估規模: M{eq_info.get('mag', '?')}\n"
+                    f"🕳️ 深度: {eq_info.get('depth', '?')} 公里\n"
+                    f"⚡ 來源: {eew_info.get('author', 'unknown')}"
+                )
+            else:
+                eew_text = None
+        else:
+            eew_text = None
+
+        # 最近地震列表（來自 ExpTech）
+        recent_quakes = []
+        if exptech_reports:
+            for eq in exptech_reports[:5]:
+                eq_ts = datetime.fromtimestamp(eq['time'] / 1000, tz=timezone(timedelta(hours=8)))
+                time_str = eq_ts.strftime('%m/%d %H:%M')
+                recent_quakes.append({
+                    "type": "box",
+                    "layout": "horizontal",
+                    "contents": [
+                        {"type": "text", "text": time_str, "size": "xs", "color": "#555555", "flex": 2},
+                        {"type": "text", "text": f"M{eq['mag']}", "size": "xs", "color": "#E74C3C", "flex": 1, "weight": "bold"},
+                        {"type": "text", "text": eq['loc'], "size": "xs", "color": "#333333", "flex": 5, "wrap": True},
+                    ],
+                    "spacing": "sm",
+                    "margin": "sm",
+                })
+
+        # 最新地震主訊息
+        msg_text = f"🔔 最新地震報告\n📍 {loc}\n📏 芮氏規模 {mag}\n🕳️ 深度 {dep} 公里\n🕐 {eq_time}"
+
+        # Flex Message: 最近地震列表
+        flex_contents = {
+            "type": "bubble",
+            "size": "mega",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {"type": "text", "text": "🌏 近期地震一覽", "weight": "bold", "size": "md", "color": "#1a1a1a"},
+                    {"type": "text", "text": "資料來源：ExpTech TREM / 中央氣象署", "size": "xxs", "color": "#888888", "margin": "sm"},
+                ],
+                "paddingAll": "16px",
+                "backgroundColor": "#F8F9FA",
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": recent_quakes if recent_quakes else [
+                    {"type": "text", "text": "暫無近期地震資料", "size": "sm", "color": "#888888"}
+                ],
+                "paddingAll": "16px",
+                "spacing": "none",
+            },
+        }
+
+        # 組合回覆
+        messages = []
+        if eew_text:
+            messages.append({"type": "text", "text": eew_text})
+        messages.append({"type": "text", "text": msg_text})
+        messages.append({'type': 'image', 'originalContentUrl': report_img, 'previewImageUrl': report_img})
+        messages.append({
+            "type": "flex",
+            "altText": "近期地震一覽",
+            "contents": flex_contents,
+        })
+
+        reply_msg = tuple(messages)
+        lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)
+    except Exception as e:
+        exception_handler(e)
+
+
+def earthquake_yt(tk: str):
+    """地震資訊（舊版）— 使用 YouTube 即時地震監控截圖影片"""
     try:
         earthquake_yturl = 'https://www.youtube.com/embed/KyT4qSK8lJo?autoplay=1&controls=0&rel=0&modestbranding=1'
         _create_snapshot_video(

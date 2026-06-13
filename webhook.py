@@ -11,7 +11,7 @@ from config import SECRET, ACCESS_TOKEN, logger, exception_handler
 import firestore
 import lma
 
-from handlers.weather import current_weather, aqi, forecast, earthquake, typhoon, radar_video
+from handlers.weather import current_weather, aqi, forecast, earthquake, earthquake_yt, typhoon, radar_video
 from handlers.accounting import accounting, account_monthly, account_detail
 from handlers.news import news
 from handlers.crypto import get_cryptocurrency_market, cryptocurrency
