@@ -72,10 +72,7 @@ def capture():
 
         # 使用 Playwright 截圖
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(
-                headless=True,
-                args=['--no-sandbox', '--use-angle=swiftshader', '--autoplay-policy=no-user-gesture-required']
-            )
+            browser = playwright.firefox.launch(headless=True)
             context = browser.new_context(
                 viewport={'width': width, 'height': height},
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
