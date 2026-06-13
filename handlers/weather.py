@@ -520,63 +520,99 @@ def earthquake(tk: str):
         else:
             eew_text = None
 
-        # 最近地震列表（來自 ExpTech）
-        recent_quakes = []
+        # 最近地震列表 — carousel 格式（每筆地震一張卡片，橫向捲動）
+        bubbles = []
         if exptech_reports:
             for eq in exptech_reports[:5]:
                 eq_ts = datetime.fromtimestamp(eq['time'] / 1000, tz=timezone(timedelta(hours=8)))
-                time_str = eq_ts.strftime('%m/%d %H:%M')
-                recent_quakes.append({
-                    "type": "box",
-                    "layout": "horizontal",
-                    "contents": [
-                        {"type": "text", "text": time_str, "size": "xs", "color": "#555555", "flex": 2},
-                        {"type": "text", "text": f"M{eq['mag']}", "size": "xs", "color": "#E74C3C", "flex": 1, "weight": "bold"},
-                        {"type": "text", "text": eq['loc'], "size": "xs", "color": "#333333", "flex": 5, "wrap": True},
-                    ],
-                    "spacing": "sm",
-                    "margin": "sm",
+                date_str = eq_ts.strftime('%m/%d')
+                time_str = eq_ts.strftime('%H:%M')
+                mag_val = eq['mag']
+                # 規模顏色分級
+                if mag_val >= 5:
+                    mag_color = "#D32F2F"
+                elif mag_val >= 4:
+                    mag_color = "#E64A19"
+                elif mag_val >= 3:
+                    mag_color = "#F57C00"
+                else:
+                    mag_color = "#757575"
+
+                int_text = f"最大震度 {eq['int']}" if eq.get('int') and eq['int'] > 0 else "最大震度 1 以下"
+
+                bubbles.append({
+                    "type": "bubble",
+                    "size": "micro",
+                    "header": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {"type": "text", "text": f"M {mag_val}", "weight": "bold", "size": "lg", "color": mag_color},
+                            {"type": "text", "text": int_text, "size": "xxs", "color": "#888888", "margin": "xs"},
+                        ],
+                        "paddingAll": "12px",
+                        "paddingBottom": "8px",
+                        "backgroundColor": "#F8F9FA",
+                    },
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {"type": "text", "text": eq['loc'], "size": "xs", "wrap": True, "weight": "bold", "color": "#333333"},
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "contents": [
+                                    {"type": "text", "text": f"📅 {date_str}  🕐 {time_str}", "size": "xxs", "color": "#888888"},
+                                    {"type": "text", "text": f"🕳️ 深度 {eq['depth']} km", "size": "xxs", "color": "#888888"},
+                                ],
+                                "margin": "md",
+                                "spacing": "xs",
+                            },
+                        ],
+                        "paddingAll": "14px",
+                        "spacing": "sm",
+                    },
                 })
 
-        # 最新地震主訊息
-        msg_text = f"🔔 最新地震報告\n📍 {loc}\n📏 芮氏規模 {mag}\n🕳️ 深度 {dep} 公里\n🕐 {eq_time}"
+        if not bubbles:
+            bubbles.append({
+                "type": "bubble",
+                "size": "micro",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {"type": "text", "text": "暫無近期地震資料", "size": "sm", "color": "#888888", "wrap": True}
+                    ],
+                    "paddingAll": "14px",
+                },
+            })
 
-        # Flex Message: 最近地震列表
-        flex_contents = {
-            "type": "bubble",
-            "size": "mega",
-            "header": {
-                "type": "box",
-                "layout": "vertical",
-                "contents": [
-                    {"type": "text", "text": "🌏 近期地震一覽", "weight": "bold", "size": "md", "color": "#1a1a1a"},
-                    {"type": "text", "text": "資料來源：ExpTech TREM / 中央氣象署", "size": "xxs", "color": "#888888", "margin": "sm"},
-                ],
-                "paddingAll": "16px",
-                "backgroundColor": "#F8F9FA",
-            },
-            "body": {
-                "type": "box",
-                "layout": "vertical",
-                "contents": recent_quakes if recent_quakes else [
-                    {"type": "text", "text": "暫無近期地震資料", "size": "sm", "color": "#888888"}
-                ],
-                "paddingAll": "16px",
-                "spacing": "none",
-            },
-        }
+        # 最後一張卡片移除，連結放在文字訊息中
+        flex_contents = {"type": "carousel", "contents": bubbles}
 
-        # 組合回覆
+        # 最新地震主訊息（含即時監控連結）
+        msg_text = (
+            f"🔔 最新地震報告\n"
+            f"📍 {loc}\n"
+            f"📏 芮氏規模 {mag}\n"
+            f"🕳️ 深度 {dep} 公里\n"
+            f"� {eq_time}\n"
+            f"📡 即時監控：https://www.youtube.com/watch?v=KyT4qSK8lJo"
+        )
+
+        # 組合回覆（氣象署報告圖放最後，因為它更新最慢）
         messages = []
         if eew_text:
             messages.append({"type": "text", "text": eew_text})
         messages.append({"type": "text", "text": msg_text})
-        messages.append({'type': 'image', 'originalContentUrl': report_img, 'previewImageUrl': report_img})
         messages.append({
             "type": "flex",
             "altText": "近期地震一覽",
             "contents": flex_contents,
         })
+        messages.append({'type': 'image', 'originalContentUrl': report_img, 'previewImageUrl': report_img})
 
         reply_msg = tuple(messages)
         lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)
