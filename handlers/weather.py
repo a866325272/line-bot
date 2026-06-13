@@ -473,34 +473,48 @@ def earthquake(tk: str):
                 except Exception:
                     continue
 
-        # --- 3. 從 CWA 氣象署 API 取得地震報告（含官方報告圖片）---
-        url_significant = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={CWA_TOKEN}'
-        url_minor = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization={CWA_TOKEN}'
-        e_data = requests.get(url_significant, timeout=15)
-        e_data_json = e_data.json()
-        e_data2 = requests.get(url_minor, timeout=15)
-        e_data_json2 = e_data2.json()
-        eq_significant = e_data_json['records']['Earthquake']
-        eq_minor = e_data_json2['records']['Earthquake']
+        # --- 3. 從 CWA 氣象署 API 取得地震報告圖片 ---
+        report_img = None
+        try:
+            url_significant = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={CWA_TOKEN}'
+            url_minor = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization={CWA_TOKEN}'
+            e_data = requests.get(url_significant, timeout=15)
+            e_data_json = e_data.json()
+            e_data2 = requests.get(url_minor, timeout=15)
+            e_data_json2 = e_data2.json()
+            eq_significant = e_data_json['records']['Earthquake']
+            eq_minor = e_data_json2['records']['Earthquake']
 
-        # 取兩個資料來源中最新的那筆
-        latest_significant = eq_significant[0] if eq_significant else None
-        latest_minor = eq_minor[0] if eq_minor else None
+            latest_significant = eq_significant[0] if eq_significant else None
+            latest_minor = eq_minor[0] if eq_minor else None
 
-        if latest_significant and latest_minor:
-            time_sig = latest_significant['EarthquakeInfo']['OriginTime']
-            time_minor = latest_minor['EarthquakeInfo']['OriginTime']
-            latest = latest_significant if time_sig > time_minor else latest_minor
-        elif latest_significant:
-            latest = latest_significant
+            if latest_significant and latest_minor:
+                time_sig = latest_significant['EarthquakeInfo']['OriginTime']
+                time_minor = latest_minor['EarthquakeInfo']['OriginTime']
+                latest_cwa = latest_significant if time_sig > time_minor else latest_minor
+            elif latest_significant:
+                latest_cwa = latest_significant
+            else:
+                latest_cwa = latest_minor
+
+            if latest_cwa:
+                report_img = latest_cwa['ReportImageURI']
+        except Exception:
+            logger.info("CWA API failed, skipping report image")
+
+        # --- 4. 從 ExpTech 取得最新地震資料作為主要來源 ---
+        if exptech_reports and exptech_reports[0]:
+            latest_eq = exptech_reports[0]
+            loc = latest_eq['loc']
+            mag = latest_eq['mag']
+            dep = latest_eq['depth']
+            eq_ts = datetime.fromtimestamp(latest_eq['time'] / 1000, tz=timezone(timedelta(hours=8)))
+            eq_time = eq_ts.strftime('%Y-%m-%d %H:%M:%S')
         else:
-            latest = latest_minor
-
-        loc = latest['EarthquakeInfo']['Epicenter']['Location']
-        mag = latest['EarthquakeInfo']['EarthquakeMagnitude']['MagnitudeValue']
-        dep = latest['EarthquakeInfo']['FocalDepth']
-        eq_time = latest['EarthquakeInfo']['OriginTime']
-        report_img = latest['ReportImageURI']
+            loc = "無資料"
+            mag = "?"
+            dep = "?"
+            eq_time = "未知"
 
         # --- 4. 組合回覆訊息 ---
         # 如果有即時 EEW 速報，加上警報訊息
@@ -612,7 +626,8 @@ def earthquake(tk: str):
             "altText": "近期地震一覽",
             "contents": flex_contents,
         })
-        messages.append({'type': 'image', 'originalContentUrl': report_img, 'previewImageUrl': report_img})
+        if report_img:
+            messages.append({'type': 'image', 'originalContentUrl': report_img, 'previewImageUrl': report_img})
 
         reply_msg = tuple(messages)
         lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)
