@@ -21,6 +21,7 @@ import logging
 import threading
 import time
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 import requests
 from flask import Flask, jsonify
@@ -35,6 +36,7 @@ EXPTECH_REPORT_API_URLS = [
 ]
 SSE_RECONNECT_DELAY = 3  # seconds
 REPORT_POLL_INTERVAL = 60  # seconds
+LAST_EEW_FILE = Path("/opt/earthquake-service/last_eew.json")  # 持久化最後一筆速報（掛載 volume）
 
 # --- Logging ---
 logging.basicConfig(
@@ -49,6 +51,8 @@ state = {
         "data": [],           # 目前進行中的 EEW 速報列表
         "last_update": None,  # 最後更新時間
         "connected": False,
+        "last_alert": None,   # 最後一筆有效的 EEW 速報（地震結束後仍保留）
+        "last_alert_time": None,  # 最後一筆速報的時間
     },
     "rts": {
         "data": None,         # 最新 RTS 資料
@@ -62,6 +66,34 @@ state = {
     "started_at": datetime.now(timezone(timedelta(hours=8))).isoformat(),
 }
 state_lock = threading.Lock()
+
+
+# --- Persistence: 啟動時載入上次的 EEW 速報 ---
+def _load_last_eew():
+    """從檔案載入最後一筆 EEW 速報"""
+    try:
+        if LAST_EEW_FILE.exists():
+            data = json.loads(LAST_EEW_FILE.read_text(encoding="utf-8"))
+            state["eew"]["last_alert"] = data.get("last_alert")
+            state["eew"]["last_alert_time"] = data.get("last_alert_time")
+            logger.info(f"[EEW] Loaded last alert from {LAST_EEW_FILE}")
+    except Exception as e:
+        logger.warning(f"[EEW] Failed to load last alert: {e}")
+
+
+def _save_last_eew():
+    """將最後一筆 EEW 速報寫入檔案"""
+    try:
+        data = {
+            "last_alert": state["eew"]["last_alert"],
+            "last_alert_time": state["eew"]["last_alert_time"],
+        }
+        LAST_EEW_FILE.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except Exception as e:
+        logger.warning(f"[EEW] Failed to save last alert: {e}")
+
+
+_load_last_eew()
 
 
 # --- SSE Parser ---
@@ -106,8 +138,12 @@ def eew_listener():
                     state["eew"]["data"] = event_data if isinstance(event_data, list) else [event_data]
                     state["eew"]["last_update"] = datetime.now(timezone(timedelta(hours=8))).isoformat()
 
-                # 有 EEW 速報時記錄
+                # 有 EEW 速報時記錄，並保留為 last_alert
                 if event_data and event_data != []:
+                    with state_lock:
+                        state["eew"]["last_alert"] = event_data if isinstance(event_data, list) else [event_data]
+                        state["eew"]["last_alert_time"] = datetime.now(timezone(timedelta(hours=8))).isoformat()
+                        _save_last_eew()
                     logger.warning(f"[EEW] ⚠️  地震速報! {json.dumps(event_data, ensure_ascii=False)}")
 
         except Exception as e:
@@ -242,7 +278,7 @@ def get_latest():
     """
     綜合最新地震資訊:
     - 有 EEW 時回傳 EEW（即時速報）
-    - 無 EEW 時回傳最新 report + RTS 有感震度
+    - 無 EEW 時回傳最新 report + RTS 有感震度 + 最後一筆速報 (last_eew)
     """
     with state_lock:
         eew_data = state["eew"]["data"]
@@ -259,6 +295,8 @@ def get_latest():
         result = {
             "has_eew": has_eew,
             "eew": eew_data if has_eew else None,
+            "last_eew": state["eew"]["last_alert"],
+            "last_eew_time": state["eew"]["last_alert_time"],
             "report": state["report"]["data"][0] if state["report"]["data"] else None,
             "felt_stations": felt_stations if felt_stations else None,
             "rts_time": rts_data.get("time") if rts_data else None,

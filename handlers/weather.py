@@ -596,6 +596,8 @@ def earthquake(tk: str):
 
         # --- 1. 查詢 earthquake-service 取得即時 EEW 和最新報告 ---
         eew_alert = None
+        last_eew_alert = None
+        last_eew_time = None
         exptech_reports = None
         try:
             latest_resp = requests.get(f"{EARTHQUAKE_SERVICE_URL}/latest", timeout=5)
@@ -603,6 +605,10 @@ def earthquake(tk: str):
                 latest_data = latest_resp.json()
                 if latest_data.get("has_eew") and latest_data.get("eew"):
                     eew_alert = latest_data["eew"]
+                # 取得最後一筆速報（即使目前沒有即時 EEW）
+                if latest_data.get("last_eew"):
+                    last_eew_alert = latest_data["last_eew"]
+                    last_eew_time = latest_data.get("last_eew_time")
         except Exception:
             logger.info("earthquake-service unavailable, falling back to direct API")
 
@@ -666,7 +672,7 @@ def earthquake(tk: str):
             eq_time = "未知"
 
         # --- 4. 組合回覆訊息 ---
-        # 如果有即時 EEW 速報，加上警報訊息
+        # 如果有即時 EEW 速報，加上警報訊息；否則顯示最近一次速報
         if eew_alert:
             eew_info = eew_alert[0] if isinstance(eew_alert, list) and eew_alert else eew_alert
             if isinstance(eew_info, dict) and eew_info.get("eq"):
@@ -677,6 +683,22 @@ def earthquake(tk: str):
                     f"📏 預估規模: M{eq_info.get('mag', '?')}\n"
                     f"🕳️ 深度: {eq_info.get('depth', '?')} 公里\n"
                     f"⚡ 來源: {eew_info.get('author', 'unknown')}"
+                )
+            else:
+                eew_text = None
+        elif last_eew_alert:
+            # 沒有即時 EEW，但有最近一次速報記錄
+            eew_info = last_eew_alert[0] if isinstance(last_eew_alert, list) and last_eew_alert else last_eew_alert
+            if isinstance(eew_info, dict) and eew_info.get("eq"):
+                eq_info = eew_info["eq"]
+                time_label = f"\n🕐 速報時間: {last_eew_time}" if last_eew_time else ""
+                eew_text = (
+                    f"📋 最近一次地震速報（EEW）\n"
+                    f"📍 震央: {eq_info.get('loc', '未知')}\n"
+                    f"📏 預估規模: M{eq_info.get('mag', '?')}\n"
+                    f"🕳️ 深度: {eq_info.get('depth', '?')} 公里\n"
+                    f"⚡ 來源: {eew_info.get('author', 'unknown')}"
+                    f"{time_label}"
                 )
             else:
                 eew_text = None
