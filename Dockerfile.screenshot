@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY screenshot-service/requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt && \
-    playwright install firefox --with-deps && \
+    playwright install chromium --with-deps && \
     apt-get update && apt-get install -y fonts-wqy-zenhei ffmpeg && \
     rm -rf /var/lib/apt/lists/* /root/.cache/pip && \
     mkdir -p /app/pics /app/videos /app/typhoon /app/typhoon/tmp_pics /var/log/screenshot-service
