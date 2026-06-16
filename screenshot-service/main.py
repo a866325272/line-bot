@@ -85,7 +85,9 @@ def _capture_site(output_name, url, duration=30, width=1138, height=640):
             start_time = time.time()
             while time.time() - start_time < duration:
                 page.screenshot(
-                    path=f'{tmp_pics}/{output_name}_{frame_count:03d}.png'
+                    path=f'{tmp_pics}/{output_name}_{frame_count:03d}.jpg',
+                    type='jpeg',
+                    quality=80,
                 )
                 frame_count += 1
 
@@ -108,7 +110,7 @@ def _capture_site(output_name, url, duration=30, width=1138, height=640):
         ffmpeg_command = [
             'ffmpeg', '-y',
             '-framerate', f'{actual_fps:.2f}',
-            '-i', f'{tmp_pics}/{output_name}_%03d.png',
+            '-i', f'{tmp_pics}/{output_name}_%03d.jpg',
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
             video_path
@@ -118,7 +120,7 @@ def _capture_site(output_name, url, duration=30, width=1138, height=640):
         # 預覽圖：取第 4 秒的幀
         preview_frame = int(actual_fps * 4)
         preview_frame = min(preview_frame, frame_count - 1)
-        preview_src = f'{tmp_pics}/{output_name}_{preview_frame:03d}.png'
+        preview_src = f'{tmp_pics}/{output_name}_{preview_frame:03d}.jpg'
         preview_filename = f'{output_name}_{ts}.png'
         preview_path = os.path.join(TYPHOON_DIR, preview_filename)
         if os.path.exists(preview_src):
