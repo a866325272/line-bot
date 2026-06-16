@@ -518,30 +518,83 @@ def _create_snapshot_video(sites, framerate, duration, width, height, preview_fr
 
 
 def typhoon(tk: str, ID: str):
-    """颱風預測"""
+    """颱風預測 — 從 screenshot-service 取預先截好的影片，秒回"""
     try:
         ncdr_url = 'https://watch.ncdr.nat.gov.tw/watch_tracks_pro'
         windy_url = 'https://www.windy.com/?24.939,121.542,5'
 
-        t1 = threading.Thread(target=_create_snapshot_video, args=([('typhoon', ncdr_url)], 4, 30, 1138, 640), kwargs={'preview_frames': [18]})
-        t2 = threading.Thread(target=_create_snapshot_video, args=([('windy', windy_url)], 4, 30, 1138, 640), kwargs={'preview_frames': [18]})
-        t1.start()
-        t2.start()
-        t1.join()
-        t2.join()
+        # 從 screenshot-service 取最新的預錄影片
+        latest_resp = requests.get(f'{SCREENSHOT_SERVICE_URL}/latest/typhoon', timeout=10)
+        latest_resp.raise_for_status()
+        latest = latest_resp.json()
 
-        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/typhoon.mp4", f'typhoon/typhoon{tk}.mp4')
-        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/typhoon_018.png", f'typhoon/typhoon{tk}.png')
-        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./videos/windy.mp4", f'typhoon/windy{tk}.mp4')
-        gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./pics/windy_018.png", f'typhoon/windy{tk}.png')
-        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.mp4')
-        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/typhoon{tk}.png')
-        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/windy{tk}.mp4')
-        gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'typhoon/windy{tk}.png')
-        ncdr_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.png'
-        ncdr_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/typhoon{tk}.mp4'
-        windy_img = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.png'
-        windy_video = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/typhoon/windy{tk}.mp4'
+        if not latest.get('available'):
+            # 沒有預錄檔案，fallback 到即時截圖
+            logger.info('typhoon: no pre-captured files, falling back to live capture')
+            _typhoon_live_capture(tk, ID)
+            return
+
+        # 下載影片和預覽圖到本地，再上傳 GCS
+        os.makedirs('videos', exist_ok=True)
+        os.makedirs('pics', exist_ok=True)
+
+        gcs_bucket = "asia.artifacts.watermelon-368305.appspot.com"
+        media = {}  # key -> {'video_url': ..., 'img_url': ...}
+
+        for key in ('ncdr', 'windy'):
+            info = latest.get(key)
+            if not info:
+                continue
+
+            video_filename = info['video']
+            preview_filename = info.get('preview')
+
+            # 下載影片
+            video_resp = requests.get(
+                f'{SCREENSHOT_SERVICE_URL}/typhoon/download/{video_filename}', timeout=60)
+            if video_resp.status_code != 200:
+                continue
+            local_video = f'videos/{video_filename}'
+            with open(local_video, 'wb') as f:
+                f.write(video_resp.content)
+
+            # 下載預覽圖
+            local_preview = None
+            if preview_filename:
+                img_resp = requests.get(
+                    f'{SCREENSHOT_SERVICE_URL}/typhoon/download/{preview_filename}', timeout=60)
+                if img_resp.status_code == 200:
+                    local_preview = f'pics/{preview_filename}'
+                    with open(local_preview, 'wb') as f:
+                        f.write(img_resp.content)
+
+            # 上傳 GCS（帶時間戳，避免 CDN 快取）
+            gcs_video_path = f'typhoon/{video_filename}'
+            gcs.upload_blob(gcs_bucket, local_video, gcs_video_path)
+            gcs.make_blob_public(gcs_bucket, gcs_video_path)
+
+            video_url = f'https://storage.googleapis.com/{gcs_bucket}/{gcs_video_path}'
+            img_url = video_url  # fallback
+
+            if local_preview:
+                gcs_preview_path = f'typhoon/{preview_filename}'
+                gcs.upload_blob(gcs_bucket, local_preview, gcs_preview_path)
+                gcs.make_blob_public(gcs_bucket, gcs_preview_path)
+                img_url = f'https://storage.googleapis.com/{gcs_bucket}/{gcs_preview_path}'
+
+            media[key] = {'video_url': video_url, 'img_url': img_url}
+
+            # 清理本地
+            for f in (local_video, local_preview):
+                if f:
+                    try:
+                        os.remove(f)
+                    except OSError:
+                        pass
+
+        if not media:
+            lma.reply_message('颱風截圖取得失敗，請稍後再試。', tk, ACCESS_TOKEN)
+            return
 
         def _video_bubble(title, subtitle, video_url, preview_url):
             return {
@@ -571,22 +624,98 @@ def typhoon(tk: str, ID: str):
                 },
             }
 
-        reply_msg = (
-            {"type": "text", "text": f"NCDR路徑預測: {ncdr_url}\nWindy風地圖: {windy_url}"},
-            {
+        messages = [{"type": "text", "text": f"NCDR路徑預測: {ncdr_url}\nWindy風地圖: {windy_url}"}]
+
+        if 'ncdr' in media:
+            messages.append({
                 "type": "flex",
                 "altText": "颱風路徑預測 - NCDR",
-                "contents": _video_bubble("NCDR 颱風路徑預測", ncdr_url, ncdr_video, ncdr_img),
-            },
-            {
+                "contents": _video_bubble("NCDR 颱風路徑預測", ncdr_url,
+                                          media['ncdr']['video_url'], media['ncdr']['img_url']),
+            })
+        if 'windy' in media:
+            messages.append({
                 "type": "flex",
                 "altText": "颱風風場 - Windy",
-                "contents": _video_bubble("Windy 風場地圖", windy_url, windy_video, windy_img),
-            },
-        )
-        lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)
+                "contents": _video_bubble("Windy 風場地圖", windy_url,
+                                          media['windy']['video_url'], media['windy']['img_url']),
+            })
+
+        lma.reply_multi_message(messages, tk, ACCESS_TOKEN)
+
     except Exception as e:
         exception_handler(e)
+        lma.reply_message('颱風資訊取得失敗，請稍後再試。', tk, ACCESS_TOKEN)
+
+
+def _typhoon_live_capture(tk: str, ID: str):
+    """Fallback: 即時截圖（原本的邏輯）"""
+    ncdr_url = 'https://watch.ncdr.nat.gov.tw/watch_tracks_pro'
+    windy_url = 'https://www.windy.com/?24.939,121.542,5'
+
+    t1 = threading.Thread(target=_create_snapshot_video, args=([('typhoon', ncdr_url)], 4, 30, 1138, 640), kwargs={'preview_frames': [18]})
+    t2 = threading.Thread(target=_create_snapshot_video, args=([('windy', windy_url)], 4, 30, 1138, 640), kwargs={'preview_frames': [18]})
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    gcs_bucket = "asia.artifacts.watermelon-368305.appspot.com"
+    gcs.upload_blob(gcs_bucket, "./videos/typhoon.mp4", f'typhoon/typhoon{tk}.mp4')
+    gcs.upload_blob(gcs_bucket, "./pics/typhoon_018.png", f'typhoon/typhoon{tk}.png')
+    gcs.upload_blob(gcs_bucket, "./videos/windy.mp4", f'typhoon/windy{tk}.mp4')
+    gcs.upload_blob(gcs_bucket, "./pics/windy_018.png", f'typhoon/windy{tk}.png')
+    gcs.make_blob_public(gcs_bucket, f'typhoon/typhoon{tk}.mp4')
+    gcs.make_blob_public(gcs_bucket, f'typhoon/typhoon{tk}.png')
+    gcs.make_blob_public(gcs_bucket, f'typhoon/windy{tk}.mp4')
+    gcs.make_blob_public(gcs_bucket, f'typhoon/windy{tk}.png')
+    ncdr_img = f'https://storage.googleapis.com/{gcs_bucket}/typhoon/typhoon{tk}.png'
+    ncdr_video = f'https://storage.googleapis.com/{gcs_bucket}/typhoon/typhoon{tk}.mp4'
+    windy_img = f'https://storage.googleapis.com/{gcs_bucket}/typhoon/windy{tk}.png'
+    windy_video = f'https://storage.googleapis.com/{gcs_bucket}/typhoon/windy{tk}.mp4'
+
+    def _video_bubble(title, subtitle, video_url, preview_url):
+        return {
+            "type": "bubble",
+            "size": "mega",
+            "hero": {
+                "type": "video",
+                "url": video_url,
+                "previewUrl": preview_url,
+                "altContent": {
+                    "type": "image",
+                    "size": "full",
+                    "aspectRatio": "16:9",
+                    "aspectMode": "cover",
+                    "url": preview_url,
+                },
+                "aspectRatio": "16:9",
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "paddingAll": "8px",
+                "contents": [
+                    {"type": "text", "text": title, "weight": "bold", "size": "sm"},
+                    {"type": "text", "text": subtitle, "size": "xs", "color": "#888888"},
+                ],
+            },
+        }
+
+    reply_msg = (
+        {"type": "text", "text": f"NCDR路徑預測: {ncdr_url}\nWindy風地圖: {windy_url}"},
+        {
+            "type": "flex",
+            "altText": "颱風路徑預測 - NCDR",
+            "contents": _video_bubble("NCDR 颱風路徑預測", ncdr_url, ncdr_video, ncdr_img),
+        },
+        {
+            "type": "flex",
+            "altText": "颱風風場 - Windy",
+            "contents": _video_bubble("Windy 風場地圖", windy_url, windy_video, windy_img),
+        },
+    )
+    lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)
 
 
 def earthquake(tk: str):
