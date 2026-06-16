@@ -58,7 +58,15 @@ def _capture_site(output_name, url, framerate=4, duration=30, width=1138, height
 
     try:
         with sync_playwright() as playwright:
-            browser = playwright.firefox.launch(headless=True)
+            browser = playwright.chromium.launch(
+                headless=True,
+                args=[
+                    '--use-gl=swiftshader',
+                    '--enable-webgl',
+                    '--ignore-gpu-blocklist',
+                    '--no-sandbox',
+                ]
+            )
             context = browser.new_context(
                 viewport={'width': width, 'height': height},
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -301,7 +309,15 @@ def capture():
 
         # 使用 Playwright 截圖
         with sync_playwright() as playwright:
-            browser = playwright.firefox.launch(headless=True)
+            browser = playwright.chromium.launch(
+                headless=True,
+                args=[
+                    '--use-gl=swiftshader',
+                    '--enable-webgl',
+                    '--ignore-gpu-blocklist',
+                    '--no-sandbox',
+                ]
+            )
             context = browser.new_context(
                 viewport={'width': width, 'height': height},
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
