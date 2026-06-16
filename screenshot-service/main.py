@@ -46,7 +46,7 @@ logger.addHandler(console_handler)
 _typhoon_scheduler_enabled = True  # 可透過 API 開關
 
 
-def _capture_site(output_name, url, framerate=4, duration=30, width=1138, height=640):
+def _capture_site(output_name, url, framerate=12, duration=30, width=1138, height=640):
     """對單一網站進行截圖錄影，回傳影片路徑和預覽圖路徑"""
     tmp_pics = os.path.join(TYPHOON_DIR, 'tmp_pics')
     os.makedirs(tmp_pics, exist_ok=True)
@@ -105,8 +105,8 @@ def _capture_site(output_name, url, framerate=4, duration=30, width=1138, height
         ]
         subprocess.run(ffmpeg_command, capture_output=True)
 
-        # 預覽圖：取中間幀
-        preview_frame = num_frames // 2
+        # 預覽圖：取第 4 秒的幀（framerate * 4）
+        preview_frame = framerate * 4
         preview_src = f'{tmp_pics}/{output_name}_{preview_frame:03d}.png'
         preview_filename = f'{output_name}_{ts}.png'
         preview_path = os.path.join(TYPHOON_DIR, preview_filename)
