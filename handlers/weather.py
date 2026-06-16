@@ -628,8 +628,8 @@ def earthquake(tk: str):
                 except Exception:
                     continue
 
-        # --- 3. 從 CWA 氣象署 API 取得地震報告圖片 ---
-        report_img = None
+        # --- 3. 從 CWA 氣象署 API 取得地震報告（含圖片）---
+        cwa_reports = []  # 合併後的 CWA 地震報告列表（按時間由新到舊）
         try:
             url_significant = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0016-001?Authorization={CWA_TOKEN}'
             url_minor = f'https://opendata.cwa.gov.tw/api/v1/rest/datastore/E-A0015-001?Authorization={CWA_TOKEN}'
@@ -640,36 +640,12 @@ def earthquake(tk: str):
             eq_significant = e_data_json['records']['Earthquake']
             eq_minor = e_data_json2['records']['Earthquake']
 
-            latest_significant = eq_significant[0] if eq_significant else None
-            latest_minor = eq_minor[0] if eq_minor else None
-
-            if latest_significant and latest_minor:
-                time_sig = latest_significant['EarthquakeInfo']['OriginTime']
-                time_minor = latest_minor['EarthquakeInfo']['OriginTime']
-                latest_cwa = latest_significant if time_sig > time_minor else latest_minor
-            elif latest_significant:
-                latest_cwa = latest_significant
-            else:
-                latest_cwa = latest_minor
-
-            if latest_cwa:
-                report_img = latest_cwa['ReportImageURI']
+            # 合併兩個來源，按時間由新到舊排序取前 5 筆
+            all_cwa = eq_significant + eq_minor
+            all_cwa.sort(key=lambda x: x['EarthquakeInfo']['OriginTime'], reverse=True)
+            cwa_reports = all_cwa[:5]
         except Exception:
             logger.info("CWA API failed, skipping report image")
-
-        # --- 4. 從 ExpTech 取得最新地震資料作為主要來源 ---
-        if exptech_reports and exptech_reports[0]:
-            latest_eq = exptech_reports[0]
-            loc = latest_eq['loc']
-            mag = latest_eq['mag']
-            dep = latest_eq['depth']
-            eq_ts = datetime.fromtimestamp(latest_eq['time'] / 1000, tz=timezone(timedelta(hours=8)))
-            eq_time = eq_ts.strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            loc = "無資料"
-            mag = "?"
-            dep = "?"
-            eq_time = "未知"
 
         # --- 4. 組合回覆訊息 ---
         # 如果有即時 EEW 速報，加上警報訊息；否則顯示最近一次速報
@@ -682,7 +658,9 @@ def earthquake(tk: str):
                     f"📍 震央: {eq_info.get('loc', '未知')}\n"
                     f"📏 預估規模: M{eq_info.get('mag', '?')}\n"
                     f"🕳️ 深度: {eq_info.get('depth', '?')} 公里\n"
-                    f"⚡ 來源: {eew_info.get('author', 'unknown')}"
+                    f"⚡ 來源: {eew_info.get('author', 'unknown')}\n"
+                    f"📡 即時監控：https://www.youtube.com/watch?v=KyT4qSK8lJo\n\n"
+                    f"ℹ️ 速報為即時資訊，下方報告圖由氣象署發布，可能有數分鐘延遲"
                 )
             else:
                 eew_text = None
@@ -698,21 +676,29 @@ def earthquake(tk: str):
                     f"📏 預估規模: M{eq_info.get('mag', '?')}\n"
                     f"🕳️ 深度: {eq_info.get('depth', '?')} 公里\n"
                     f"⚡ 來源: {eew_info.get('author', 'unknown')}"
-                    f"{time_label}"
+                    f"{time_label}\n"
+                    f"📡 即時監控：https://www.youtube.com/watch?v=KyT4qSK8lJo\n\n"
+                    f"ℹ️ 速報為即時資訊，下方報告圖由氣象署發布，可能有數分鐘延遲"
                 )
             else:
                 eew_text = None
         else:
             eew_text = None
 
-        # 最近地震列表 — carousel 格式（每筆地震一張卡片，橫向捲動）
+        # 最近地震列表 — carousel 格式（每筆地震一張卡片，橫向捲動，含報告圖）
         bubbles = []
-        if exptech_reports:
-            for eq in exptech_reports[:5]:
-                eq_ts = datetime.fromtimestamp(eq['time'] / 1000, tz=timezone(timedelta(hours=8)))
-                date_str = eq_ts.strftime('%m/%d')
-                time_str = eq_ts.strftime('%H:%M')
-                mag_val = eq['mag']
+        if cwa_reports:
+            for eq in cwa_reports[:5]:
+                eq_info = eq['EarthquakeInfo']
+                eq_loc = eq_info['Epicenter']['Location']
+                eq_mag = eq_info['EarthquakeMagnitude']['MagnitudeValue']
+                eq_dep = eq_info['FocalDepth']
+                eq_origin = eq_info['OriginTime']  # "2026-06-14T11:15:04+08:00"
+                eq_img = eq.get('ReportImageURI')
+                date_str = eq_origin[5:10].replace('-', '/')
+                time_str = eq_origin[11:16]
+                mag_val = float(eq_mag)
+
                 # 規模顏色分級
                 if mag_val >= 5:
                     mag_color = "#D32F2F"
@@ -723,27 +709,57 @@ def earthquake(tk: str):
                 else:
                     mag_color = "#757575"
 
-                int_text = f"最大震度 {eq['int']}" if eq.get('int') and eq['int'] > 0 else "最大震度 1 以下"
-
-                bubbles.append({
+                bubble = {
                     "type": "bubble",
-                    "size": "micro",
-                    "header": {
-                        "type": "box",
-                        "layout": "vertical",
-                        "contents": [
-                            {"type": "text", "text": f"M {mag_val}", "weight": "bold", "size": "lg", "color": mag_color},
-                            {"type": "text", "text": int_text, "size": "xxs", "color": "#888888", "margin": "xs"},
-                        ],
-                        "paddingAll": "12px",
-                        "paddingBottom": "8px",
-                        "backgroundColor": "#F8F9FA",
-                    },
+                    "size": "giga",
                     "body": {
                         "type": "box",
                         "layout": "vertical",
                         "contents": [
-                            {"type": "text", "text": eq['loc'], "size": "xs", "wrap": True, "weight": "bold", "color": "#333333"},
+                            {"type": "text", "text": f"🕐 {date_str} {time_str}", "weight": "bold", "size": "sm", "color": "#333333"},
+                            {"type": "text", "text": f"📍 {eq_loc}", "size": "xs", "wrap": True, "color": "#555555", "margin": "sm"},
+                            {"type": "text", "text": f"📏 芮氏規模 {eq_mag}", "size": "xs", "color": mag_color, "margin": "sm"},
+                            {"type": "text", "text": f"🕳️ 深度 {eq_dep} 公里", "size": "xs", "color": "#888888", "margin": "sm"},
+                        ],
+                        "paddingAll": "12px",
+                        "spacing": "sm",
+                    },
+                }
+                if eq_img:
+                    bubble["hero"] = {
+                        "type": "image",
+                        "url": eq_img,
+                        "size": "full",
+                        "aspectRatio": "4:3",
+                        "aspectMode": "fit",
+                        "action": {"type": "uri", "uri": eq_img},
+                    }
+                bubbles.append(bubble)
+        elif exptech_reports:
+            # Fallback: CWA 失敗時用 ExpTech 資料（無圖）
+            for eq in exptech_reports[:5]:
+                eq_ts = datetime.fromtimestamp(eq['time'] / 1000, tz=timezone(timedelta(hours=8)))
+                date_str = eq_ts.strftime('%m/%d')
+                time_str = eq_ts.strftime('%H:%M')
+                mag_val = eq['mag']
+                if mag_val >= 5:
+                    mag_color = "#D32F2F"
+                elif mag_val >= 4:
+                    mag_color = "#E64A19"
+                elif mag_val >= 3:
+                    mag_color = "#F57C00"
+                else:
+                    mag_color = "#757575"
+
+                bubbles.append({
+                    "type": "bubble",
+                    "size": "micro",
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {"type": "text", "text": f"M {mag_val}", "weight": "bold", "size": "lg", "color": mag_color},
+                            {"type": "text", "text": eq['loc'], "size": "xxs", "wrap": True, "weight": "bold", "color": "#333333", "margin": "sm"},
                             {
                                 "type": "box",
                                 "layout": "vertical",
@@ -755,7 +771,7 @@ def earthquake(tk: str):
                                 "spacing": "xs",
                             },
                         ],
-                        "paddingAll": "14px",
+                        "paddingAll": "12px",
                         "spacing": "sm",
                     },
                 })
@@ -774,31 +790,17 @@ def earthquake(tk: str):
                 },
             })
 
-        # 最後一張卡片移除，連結放在文字訊息中
         flex_contents = {"type": "carousel", "contents": bubbles}
 
-        # 最新地震主訊息（含即時監控連結）
-        msg_text = (
-            f"🔔 最新地震報告\n"
-            f"📍 {loc}\n"
-            f"📏 芮氏規模 {mag}\n"
-            f"🕳️ 深度 {dep} 公里\n"
-            f"� {eq_time}\n"
-            f"📡 即時監控：https://www.youtube.com/watch?v=KyT4qSK8lJo"
-        )
-
-        # 組合回覆（氣象署報告圖放最後，因為它更新最慢）
+        # 組合回覆
         messages = []
         if eew_text:
             messages.append({"type": "text", "text": eew_text})
-        messages.append({"type": "text", "text": msg_text})
         messages.append({
             "type": "flex",
             "altText": "近期地震一覽",
             "contents": flex_contents,
         })
-        if report_img:
-            messages.append({'type': 'image', 'originalContentUrl': report_img, 'previewImageUrl': report_img})
 
         reply_msg = tuple(messages)
         lma.reply_multi_message(reply_msg, tk, ACCESS_TOKEN)

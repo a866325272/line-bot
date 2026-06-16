@@ -115,6 +115,28 @@ def parse_sse_stream(response):
                                 pass
 
 
+# --- Taiwan EEW Filter ---
+# 排除的非台灣來源（黑名單）
+_BLOCKED_AUTHORS = {"nied"}
+
+
+def _is_taiwan_eew(eew_item):
+    """判斷單筆 EEW 是否為台灣地區（排除已知非台灣來源）"""
+    if not isinstance(eew_item, dict):
+        return False
+    author = eew_item.get("author", "").lower()
+    return author not in _BLOCKED_AUTHORS
+
+
+def _filter_taiwan_eew(event_data):
+    """從 EEW 事件中過濾出台灣相關的速報，回傳 list 或空 list"""
+    if not event_data:
+        return []
+    items = event_data if isinstance(event_data, list) else [event_data]
+    tw_items = [item for item in items if _is_taiwan_eew(item)]
+    return tw_items
+
+
 # --- SSE Listener: EEW ---
 def eew_listener():
     """持續監聽 EEW SSE 串流"""
@@ -134,17 +156,20 @@ def eew_listener():
             logger.info("[EEW] Connected successfully")
 
             for event_data in parse_sse_stream(resp):
+                # 過濾：只保留台灣地區的 EEW（author=cwa 或震央在台灣範圍內）
+                tw_eew = _filter_taiwan_eew(event_data)
+
                 with state_lock:
-                    state["eew"]["data"] = event_data if isinstance(event_data, list) else [event_data]
+                    state["eew"]["data"] = tw_eew
                     state["eew"]["last_update"] = datetime.now(timezone(timedelta(hours=8))).isoformat()
 
-                # 有 EEW 速報時記錄，並保留為 last_alert
-                if event_data and event_data != []:
+                # 有台灣 EEW 速報時記錄，並保留為 last_alert
+                if tw_eew:
                     with state_lock:
-                        state["eew"]["last_alert"] = event_data if isinstance(event_data, list) else [event_data]
+                        state["eew"]["last_alert"] = tw_eew
                         state["eew"]["last_alert_time"] = datetime.now(timezone(timedelta(hours=8))).isoformat()
                         _save_last_eew()
-                    logger.warning(f"[EEW] ⚠️  地震速報! {json.dumps(event_data, ensure_ascii=False)}")
+                    logger.warning(f"[EEW] ⚠️  台灣地震速報! {json.dumps(tw_eew, ensure_ascii=False)}")
 
         except Exception as e:
             logger.error(f"[EEW] Connection error: {e}")
