@@ -46,8 +46,12 @@ logger.addHandler(console_handler)
 _typhoon_scheduler_enabled = True  # 可透過 API 開關
 
 
-def _capture_site(output_name, url, framerate=12, duration=30, width=1138, height=640):
-    """對單一網站進行截圖錄影，回傳影片路徑和預覽圖路徑"""
+def _capture_site(output_name, url, duration=30, width=1138, height=640):
+    """對單一網站進行截圖錄影，回傳影片路徑和預覽圖路徑
+
+    截圖固定跑 duration 秒，盡量多截幀，再以 (幀數/duration) 的 fps 合成影片，
+    確保影片時長 = duration 且播放速度 = 真實速度。
+    """
     tmp_pics = os.path.join(TYPHOON_DIR, 'tmp_pics')
     os.makedirs(tmp_pics, exist_ok=True)
 
@@ -76,17 +80,23 @@ def _capture_site(output_name, url, framerate=12, duration=30, width=1138, heigh
             page = context.new_page()
             page.goto(url, wait_until='load', timeout=60000)
 
-            num_frames = framerate * duration
-            frame_interval = 1.0 / framerate
-
-            for frame_count in range(num_frames):
+            # 在 duration 秒內盡量多截幀
+            frame_count = 0
+            start_time = time.time()
+            while time.time() - start_time < duration:
                 page.screenshot(
                     path=f'{tmp_pics}/{output_name}_{frame_count:03d}.png'
                 )
-                time.sleep(frame_interval)
+                frame_count += 1
 
             context.close()
             browser.close()
+
+        if frame_count == 0:
+            return None, None
+
+        # 計算實際 fps：幀數 / duration → 影片時長 = duration
+        actual_fps = frame_count / duration
 
         # 時間戳
         tz = timezone(timedelta(hours=8))
@@ -97,7 +107,7 @@ def _capture_site(output_name, url, framerate=12, duration=30, width=1138, heigh
         video_path = os.path.join(TYPHOON_DIR, video_filename)
         ffmpeg_command = [
             'ffmpeg', '-y',
-            '-framerate', str(framerate),
+            '-framerate', f'{actual_fps:.2f}',
             '-i', f'{tmp_pics}/{output_name}_%03d.png',
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
@@ -105,8 +115,9 @@ def _capture_site(output_name, url, framerate=12, duration=30, width=1138, heigh
         ]
         subprocess.run(ffmpeg_command, capture_output=True)
 
-        # 預覽圖：取第 4 秒的幀（framerate * 4）
-        preview_frame = framerate * 4
+        # 預覽圖：取第 4 秒的幀
+        preview_frame = int(actual_fps * 4)
+        preview_frame = min(preview_frame, frame_count - 1)
         preview_src = f'{tmp_pics}/{output_name}_{preview_frame:03d}.png'
         preview_filename = f'{output_name}_{ts}.png'
         preview_path = os.path.join(TYPHOON_DIR, preview_filename)
@@ -118,7 +129,7 @@ def _capture_site(output_name, url, framerate=12, duration=30, width=1138, heigh
             if f.startswith(output_name):
                 os.remove(os.path.join(tmp_pics, f))
 
-        logger.info(f'Typhoon capture done: {video_filename}')
+        logger.info(f'Typhoon capture done: {video_filename} ({frame_count} frames, {actual_fps:.1f} fps)')
         return video_path, preview_path
 
     except Exception as e:
@@ -332,10 +343,14 @@ def capture():
             frame_interval = 1.0 / framerate
 
             for frame_count in range(num_frames):
+                frame_start = time.time()
                 page.screenshot(
                     path=f'{PICS_DIR}/{output_name}_{frame_count:03d}.png'
                 )
-                time.sleep(frame_interval)
+                elapsed = time.time() - frame_start
+                sleep_time = frame_interval - elapsed
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
 
             context.close()
             browser.close()
