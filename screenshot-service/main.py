@@ -27,7 +27,7 @@ TYPHOON_INTERVAL_MINUTES = 30  # 每 30 分鐘截一次
 # 颱風截圖目標
 TYPHOON_SITES = [
     ('typhoon_ncdr', 'https://watch.ncdr.nat.gov.tw/watch_tracks_pro'),
-    ('typhoon_windy', 'https://www.windy.com/?24.939,121.542,5'),
+    ('typhoon_windy', 'https://www.windy.com/?25.053,121.526,5'),
 ]
 
 # log config
@@ -46,7 +46,7 @@ logger.addHandler(console_handler)
 _typhoon_scheduler_enabled = True  # 可透過 API 開關
 
 
-def _capture_site(output_name, url, duration=30, width=1138, height=640):
+def _capture_site(output_name, url, duration=30, width=600, height=600):
     """對單一網站進行截圖錄影，回傳影片路徑和預覽圖路徑
 
     截圖固定跑 duration 秒，盡量多截幀，再以 (幀數/duration) 的 fps 合成影片，
@@ -80,6 +80,21 @@ def _capture_site(output_name, url, duration=30, width=1138, height=640):
             page = context.new_page()
             page.goto(url, wait_until='load', timeout=60000)
 
+            # 隱藏 Windy 的上下欄 UI（天氣摘要、時間軸等）
+            if 'windy' in url.lower():
+                page.evaluate("""() => {
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        #search, #bottom, #mobile-calendar, #calendar,
+                        #plugin-mobile-calendar, .plugin-bottom,
+                        .weather-header, .header, #windy-app-header,
+                        .bottom-area, .progress-bar, .legend-mobile,
+                        #embed-zoom, .leaflet-control-container,
+                        .right-border, .left-border { display: none !important; }
+                    `;
+                    document.head.appendChild(style);
+                }""")
+
             # 在 duration 秒內盡量多截幀
             frame_count = 0
             start_time = time.time()
@@ -87,7 +102,7 @@ def _capture_site(output_name, url, duration=30, width=1138, height=640):
                 page.screenshot(
                     path=f'{tmp_pics}/{output_name}_{frame_count:03d}.jpg',
                     type='jpeg',
-                    quality=80,
+                    quality=100,
                 )
                 frame_count += 1
 
