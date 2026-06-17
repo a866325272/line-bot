@@ -50,22 +50,18 @@ pipeline {
             when {
                 anyOf {
                     changeset "screenshot-service/**"
-                    changeset "Dockerfile.screenshot"
                 }
             }
             steps {
                 sh "echo 'start building screenshot service...'"
                 sh '''docker build -t ${REPO_URL}/jeff/line-bot/screenshot-service:${MAJOR_VERSION}.${BUILD_NUMBER} \
                     --no-cache \
-                    -f Dockerfile.screenshot .'''
+                    -f screenshot-service/Dockerfile screenshot-service/'''
             }
         }
         stage('Push Screenshot Service') {
             when {
-                anyOf {
-                    changeset "screenshot-service/**"
-                    changeset "Dockerfile.screenshot"
-                }
+                changeset "screenshot-service/**"
             }
             steps {
                 sh "docker push ${REPO_URL}/jeff/line-bot/screenshot-service:${MAJOR_VERSION}.${BUILD_NUMBER}"
@@ -77,10 +73,7 @@ pipeline {
         }
         stage('Deploy Screenshot Service') {
             when {
-                anyOf {
-                    changeset "screenshot-service/**"
-                    changeset "Dockerfile.screenshot"
-                }
+                changeset "screenshot-service/**"
             }
             steps {
                 sh "echo 'deploying screenshot service...'"

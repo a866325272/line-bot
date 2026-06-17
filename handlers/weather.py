@@ -607,11 +607,11 @@ def typhoon(tk: str, ID: str):
                     "altContent": {
                         "type": "image",
                         "size": "full",
-                        "aspectRatio": "16:9",
+                        "aspectRatio": "1:1",
                         "aspectMode": "cover",
                         "url": preview_url,
                     },
-                    "aspectRatio": "16:9",
+                    "aspectRatio": "1:1",
                 },
                 "body": {
                     "type": "box",
@@ -685,11 +685,11 @@ def _typhoon_live_capture(tk: str, ID: str):
                 "altContent": {
                     "type": "image",
                     "size": "full",
-                    "aspectRatio": "16:9",
+                    "aspectRatio": "1:1",
                     "aspectMode": "cover",
                     "url": preview_url,
                 },
-                "aspectRatio": "16:9",
+                "aspectRatio": "1:1",
             },
             "body": {
                 "type": "box",

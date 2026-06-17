@@ -2,14 +2,14 @@
 FROM python:3.9.16-slim
 WORKDIR /app
 
-COPY screenshot-service/requirements.txt requirements.txt
+COPY requirements.txt .
 RUN pip3 install -r requirements.txt && \
     playwright install chromium --with-deps && \
     apt-get update && apt-get install -y fonts-wqy-zenhei ffmpeg && \
     rm -rf /var/lib/apt/lists/* /root/.cache/pip && \
     mkdir -p /app/pics /app/videos /app/typhoon /app/typhoon/tmp_pics /var/log/screenshot-service
 
-COPY screenshot-service/main.py main.py
+COPY main.py .
 
 EXPOSE 5001
 CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "--timeout", "300", "main:app"]
