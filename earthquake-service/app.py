@@ -18,6 +18,7 @@ HTTP API:
 
 import json
 import logging
+import logging.handlers
 import threading
 import time
 from datetime import datetime, timezone, timedelta
@@ -39,11 +40,18 @@ REPORT_POLL_INTERVAL = 60  # seconds
 LAST_EEW_FILE = Path("/opt/earthquake-service/last_eew.json")  # 持久化最後一筆速報（掛載 volume）
 
 # --- Logging ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logger = logging.getLogger('')
+logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+rotate_handler = logging.handlers.TimedRotatingFileHandler(
+    '/var/log/earthquake-service/earthquake-service.log',
+    when="h", interval=1, backupCount=720
 )
-logger = logging.getLogger('earthquake-service')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+rotate_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+logger.addHandler(rotate_handler)
+logger.addHandler(console_handler)
 
 # --- Shared State ---
 state = {
@@ -162,6 +170,12 @@ def eew_listener():
                 with state_lock:
                     state["eew"]["data"] = tw_eew
                     state["eew"]["last_update"] = datetime.now(timezone(timedelta(hours=8))).isoformat()
+
+                # 診斷 log：收到非空事件但被 filter 擋掉時記錄
+                if event_data and not tw_eew:
+                    items = event_data if isinstance(event_data, list) else [event_data]
+                    authors = [item.get("author", "unknown") for item in items if isinstance(item, dict)]
+                    logger.info(f"[EEW] Received event (filtered out): authors={authors}")
 
                 # 有台灣 EEW 速報時記錄，並保留為 last_alert
                 if tw_eew:
