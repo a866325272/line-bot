@@ -27,9 +27,11 @@ ENV EPA_TOKEN=${EPA_TOKEN} \
 
 # 系統依賴（幾乎不變，放最前面最大化 cache）
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends fonts-wqy-zenhei && \
+    apt-get install -y --no-install-recommends fonts-wqy-zenhei ffmpeg && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/log/line-bot
+
+ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
 
 # Python 依賴（requirements.txt 變更頻率低於程式碼）
 COPY requirements.txt .
