@@ -49,10 +49,16 @@ class BudgetService:
         budgets = self.get_budgets(user_doc_id)
         summary = account_service.get_monthly_summary(user_doc_id, month)
 
+        # 本月各類別花費（可能只涵蓋有交易的類別）
+        spent_by_cat = {int(cat["type"]): cat["total"] for cat in summary.get("categories", [])}
+
+        # 涵蓋「有設定預算」與「本月有花費」的所有類別，
+        # 避免有預算但本月尚未花費的類別被漏掉
+        all_ids = {int(k) for k in budgets.keys()} | set(spent_by_cat.keys())
+
         status = []
-        for cat in summary.get("categories", []):
-            type_id = cat["type"]
-            spent = cat["total"]
+        for type_id in sorted(all_ids):
+            spent = spent_by_cat.get(type_id, 0)
             budget = budgets.get(str(type_id), 0)
 
             if budget > 0:
