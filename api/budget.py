@@ -9,12 +9,17 @@ from middleware.auth import require_auth
 budget_bp = Blueprint("budget", __name__)
 
 
+def _get_user_context():
+    """取得當前使用者的 doc_id 和 collection（支援 UserID / GroupID）"""
+    return g.user["firestore_doc_id"], g.user.get("firestore_collection", "Linebot_UserID")
+
+
 @budget_bp.route("", methods=["GET"])
 @require_auth
 def get_budgets():
     """查詢所有預算設定"""
-    user_doc_id = g.user["firestore_doc_id"]
-    budgets = budget_service.get_budgets(user_doc_id)
+    user_doc_id, collection = _get_user_context()
+    budgets = budget_service.get_budgets(user_doc_id, collection)
     return jsonify({"budgets": budgets}), 200
 
 
@@ -26,8 +31,8 @@ def get_budget_status():
     if not month:
         month = account_service._get_current_month()
 
-    user_doc_id = g.user["firestore_doc_id"]
-    status = budget_service.get_budget_status(user_doc_id, month)
+    user_doc_id, collection = _get_user_context()
+    status = budget_service.get_budget_status(user_doc_id, month, collection)
     return jsonify({"month": month, "status": status}), 200
 
 
@@ -39,6 +44,6 @@ def set_budget(category_id):
     if not data:
         return jsonify({"error": "請提供 JSON 資料", "code": "INVALID_BODY"}), 400
 
-    user_doc_id = g.user["firestore_doc_id"]
-    result = budget_service.set_budget(user_doc_id, category_id, data.get("amount"))
+    user_doc_id, collection = _get_user_context()
+    result = budget_service.set_budget(user_doc_id, category_id, data.get("amount"), collection)
     return jsonify(result), 200

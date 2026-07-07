@@ -8,12 +8,17 @@ from middleware.auth import require_auth
 categories_bp = Blueprint("categories", __name__)
 
 
+def _get_user_context():
+    """取得當前使用者的 doc_id 和 collection（支援 UserID / GroupID）"""
+    return g.user["firestore_doc_id"], g.user.get("firestore_collection", "Linebot_UserID")
+
+
 @categories_bp.route("", methods=["GET"])
 @require_auth
 def get_categories():
     """查詢所有類別"""
-    user_doc_id = g.user["firestore_doc_id"]
-    categories = category_service.get_categories(user_doc_id)
+    user_doc_id, collection = _get_user_context()
+    categories = category_service.get_categories(user_doc_id, collection)
     return jsonify({"categories": categories}), 200
 
 
@@ -25,11 +30,12 @@ def create_category():
     if not data:
         return jsonify({"error": "請提供 JSON 資料", "code": "INVALID_BODY"}), 400
 
-    user_doc_id = g.user["firestore_doc_id"]
+    user_doc_id, collection = _get_user_context()
     result = category_service.create_category(
         user_doc_id,
         name=data.get("name", ""),
         category_id=data.get("id"),
+        collection=collection,
     )
     return jsonify(result), 201
 
@@ -42,8 +48,8 @@ def update_category(category_id):
     if not data:
         return jsonify({"error": "請提供 JSON 資料", "code": "INVALID_BODY"}), 400
 
-    user_doc_id = g.user["firestore_doc_id"]
-    result = category_service.update_category(user_doc_id, category_id, data.get("name", ""))
+    user_doc_id, collection = _get_user_context()
+    result = category_service.update_category(user_doc_id, category_id, data.get("name", ""), collection)
     return jsonify(result), 200
 
 
@@ -51,6 +57,6 @@ def update_category(category_id):
 @require_auth
 def delete_category(category_id):
     """刪除類別"""
-    user_doc_id = g.user["firestore_doc_id"]
-    category_service.delete_category(user_doc_id, category_id)
+    user_doc_id, collection = _get_user_context()
+    category_service.delete_category(user_doc_id, category_id, collection)
     return jsonify({"message": "刪除成功"}), 200

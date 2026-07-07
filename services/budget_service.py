@@ -14,9 +14,10 @@ ACCOUNTS_COLLECTION = "Linebot_UserID"
 class BudgetService:
     """預算服務"""
 
-    def get_budgets(self, user_doc_id: str) -> dict:
+    def get_budgets(self, user_doc_id: str, collection: str = None) -> dict:
         """查詢所有類別預算設定"""
-        doc_ref = db.collection(ACCOUNTS_COLLECTION).document(user_doc_id)
+        col = collection or ACCOUNTS_COLLECTION
+        doc_ref = db.collection(col).document(user_doc_id)
         doc = doc_ref.get()
 
         if not doc.exists:
@@ -25,14 +26,15 @@ class BudgetService:
         data = doc.to_dict()
         return data.get("Budgets", {})
 
-    def set_budget(self, user_doc_id: str, category_id: int, amount: float) -> dict:
+    def set_budget(self, user_doc_id: str, category_id: int, amount: float, collection: str = None) -> dict:
         """設定/更新類別月預算"""
         if amount is None:
             raise ValidationError("預算金額不可為空", "BUDGET_AMOUNT_REQUIRED")
         if float(amount) < 0:
             raise ValidationError("預算金額不可為負數", "BUDGET_AMOUNT_NEGATIVE")
 
-        doc_ref = db.collection(ACCOUNTS_COLLECTION).document(user_doc_id)
+        col = collection or ACCOUNTS_COLLECTION
+        doc_ref = db.collection(col).document(user_doc_id)
         doc = doc_ref.get()
 
         budgets = {}
@@ -44,10 +46,10 @@ class BudgetService:
 
         return {"category_id": category_id, "amount": float(amount)}
 
-    def get_budget_status(self, user_doc_id: str, month: str) -> list:
+    def get_budget_status(self, user_doc_id: str, month: str, collection: str = None) -> list:
         """計算各類別預算使用狀況"""
-        budgets = self.get_budgets(user_doc_id)
-        summary = account_service.get_monthly_summary(user_doc_id, month)
+        budgets = self.get_budgets(user_doc_id, collection)
+        summary = account_service.get_monthly_summary(user_doc_id, month, collection)
 
         # 本月各類別花費（可能只涵蓋有交易的類別）
         spent_by_cat = {int(cat["type"]): cat["total"] for cat in summary.get("categories", [])}

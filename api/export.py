@@ -22,6 +22,7 @@ def export_to_spreadsheet():
         return jsonify({"error": "請提供 month 參數", "code": "MONTH_REQUIRED"}), 400
 
     user_doc_id = g.user["firestore_doc_id"]
+    collection = g.user.get("firestore_collection", "Linebot_UserID")
 
     # 取得使用者的 spreadsheet_id
     user = auth_service.get_user(g.user["id"])
@@ -33,7 +34,7 @@ def export_to_spreadsheet():
             "code": "SPREADSHEET_NOT_CONFIGURED"
         }), 400
 
-    sheet_url = export_service.export_to_spreadsheet(user_doc_id, month, spreadsheet_id)
+    sheet_url = export_service.export_to_spreadsheet(user_doc_id, month, spreadsheet_id, collection)
 
     return jsonify({
         "message": "匯出成功",

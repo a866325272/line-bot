@@ -8,7 +8,7 @@ from exceptions import ValidationError, NotFoundError
 class ExportService:
     """匯出服務"""
 
-    def export_to_spreadsheet(self, user_doc_id: str, month: str, spreadsheet_id: str) -> str:
+    def export_to_spreadsheet(self, user_doc_id: str, month: str, spreadsheet_id: str, collection: str = None) -> str:
         """
         匯出月份明細到 Google Spreadsheet
         重用現有 gss.py 邏輯，產生含 SUMIF、佔比、MoM 公式的統計表
@@ -25,7 +25,8 @@ class ExportService:
         # 取得月份記帳資料（使用原始格式）
         from google.cloud import firestore as firestore_client
         db = firestore_client.Client()
-        doc_ref = db.collection("Linebot_UserID").document(user_doc_id)
+        col = collection or "Linebot_UserID"
+        doc_ref = db.collection(col).document(user_doc_id)
         doc = doc_ref.get()
 
         if not doc.exists:
