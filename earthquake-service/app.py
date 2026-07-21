@@ -37,7 +37,8 @@ EXPTECH_REPORT_API_URLS = [
 ]
 SSE_RECONNECT_DELAY = 3  # seconds
 REPORT_POLL_INTERVAL = 60  # seconds
-LAST_EEW_FILE = Path("/opt/earthquake-service/last_eew.json")  # 持久化最後一筆速報（掛載 volume）
+LAST_EEW_FILE = Path("/opt/earthquake-service/last_eew.json")  # 持久化速報歷史（掛載 volume）
+EEW_HISTORY_MAX = 20  # 最多保留幾筆速報歷史
 
 # --- Logging ---
 logger = logging.getLogger('')
@@ -59,8 +60,7 @@ state = {
         "data": [],           # 目前進行中的 EEW 速報列表
         "last_update": None,  # 最後更新時間
         "connected": False,
-        "last_alert": None,   # 最後一筆有效的 EEW 速報（地震結束後仍保留）
-        "last_alert_time": None,  # 最後一筆速報的時間
+        "history": [],        # 速報歷史，每筆 {"alert": [...], "time": iso}，新的在後
     },
     "rts": {
         "data": None,         # 最新 RTS 資料
@@ -76,29 +76,47 @@ state = {
 state_lock = threading.Lock()
 
 
-# --- Persistence: 啟動時載入上次的 EEW 速報 ---
+# --- Persistence: 啟動時載入 EEW 速報歷史 ---
 def _load_last_eew():
-    """從檔案載入最後一筆 EEW 速報"""
+    """從檔案載入速報歷史（相容舊版單筆格式）"""
     try:
         if LAST_EEW_FILE.exists():
             data = json.loads(LAST_EEW_FILE.read_text(encoding="utf-8"))
-            state["eew"]["last_alert"] = data.get("last_alert")
-            state["eew"]["last_alert_time"] = data.get("last_alert_time")
-            logger.info(f"[EEW] Loaded last alert from {LAST_EEW_FILE}")
+            if "history" in data:
+                state["eew"]["history"] = data["history"][-EEW_HISTORY_MAX:]
+            elif data.get("last_alert"):
+                # 舊版格式：單筆 last_alert / last_alert_time → 轉成一筆歷史
+                state["eew"]["history"] = [{
+                    "alert": data["last_alert"],
+                    "time": data.get("last_alert_time"),
+                }]
+            logger.info(f"[EEW] Loaded {len(state['eew']['history'])} alert(s) from {LAST_EEW_FILE}")
     except Exception as e:
-        logger.warning(f"[EEW] Failed to load last alert: {e}")
+        logger.warning(f"[EEW] Failed to load alert history: {e}")
 
 
 def _save_last_eew():
-    """將最後一筆 EEW 速報寫入檔案"""
+    """將速報歷史寫入檔案"""
     try:
-        data = {
-            "last_alert": state["eew"]["last_alert"],
-            "last_alert_time": state["eew"]["last_alert_time"],
-        }
+        data = {"history": state["eew"]["history"]}
         LAST_EEW_FILE.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     except Exception as e:
-        logger.warning(f"[EEW] Failed to save last alert: {e}")
+        logger.warning(f"[EEW] Failed to save alert history: {e}")
+
+
+def _latest_valid_eew():
+    """從歷史由新到舊找第一筆含有效地震資料（item 有 "eq" 欄位）的速報。
+
+    回傳 (只留有 eq 的 items 的 list, 時間字串)；找不到回傳 (None, None)。
+    連線資訊等非 EEW 事件（如 {"location": "lb-tpe1"}）沒有 eq 欄位，會被跳過。
+    """
+    for entry in reversed(state["eew"]["history"]):
+        alert = entry.get("alert")
+        items = alert if isinstance(alert, list) else [alert]
+        valid_items = [i for i in items if isinstance(i, dict) and i.get("eq")]
+        if valid_items:
+            return valid_items, entry.get("time")
+    return None, None
 
 
 _load_last_eew()
@@ -177,11 +195,14 @@ def eew_listener():
                     authors = [item.get("author", "unknown") for item in items if isinstance(item, dict)]
                     logger.info(f"[EEW] Received event (filtered out): authors={authors}")
 
-                # 有台灣 EEW 速報時記錄，並保留為 last_alert
+                # 有台灣 EEW 速報時記錄，追加進歷史（保留最近 EEW_HISTORY_MAX 筆）
                 if tw_eew:
                     with state_lock:
-                        state["eew"]["last_alert"] = tw_eew
-                        state["eew"]["last_alert_time"] = datetime.now(timezone(timedelta(hours=8))).isoformat()
+                        state["eew"]["history"].append({
+                            "alert": tw_eew,
+                            "time": datetime.now(timezone(timedelta(hours=8))).isoformat(),
+                        })
+                        state["eew"]["history"] = state["eew"]["history"][-EEW_HISTORY_MAX:]
                         _save_last_eew()
                     logger.warning(f"[EEW] ⚠️  台灣地震速報! {json.dumps(tw_eew, ensure_ascii=False)}")
 
@@ -331,11 +352,13 @@ def get_latest():
                 if info.get("I", -3) >= 0:
                     felt_stations[station_id] = info
 
+        last_eew, last_eew_time = _latest_valid_eew()
+
         result = {
             "has_eew": has_eew,
             "eew": eew_data if has_eew else None,
-            "last_eew": state["eew"]["last_alert"],
-            "last_eew_time": state["eew"]["last_alert_time"],
+            "last_eew": last_eew,
+            "last_eew_time": last_eew_time,
             "report": state["report"]["data"][0] if state["report"]["data"] else None,
             "felt_stations": felt_stations if felt_stations else None,
             "rts_time": rts_data.get("time") if rts_data else None,
