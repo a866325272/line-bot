@@ -81,23 +81,26 @@ def account_monthly(client: str, ID: str, date: str, tk: str):
         lma.reply_message("日期格式錯誤，請輸入年月\nex.202307", tk, ACCESS_TOKEN)
         raise ValueError("account_monthly:月帳函式日期格式錯誤")
 
+    doc_key = 'Linebot_' + client + 'ID'
     date_key = date[:4] + "_" + date[4:]
-    accounts = firestore.get_firestore_field('Linebot_' + client + 'ID', ID, 'Accounts_' + date_key[:7])
-    cost_summation = [0, 0, 0, 0, 0, 0, 0, 0]
+    accounts = firestore.get_firestore_field(doc_key, ID, 'Accounts_' + date_key[:7])
+
+    categories = [c for c in _get_categories(doc_key, ID) if c['id'] != 11]
+    labels = [c['name'] for c in categories]
+    ids = [c['id'] for c in categories]
+    cost_summation = [0] * len(labels)
     income_summation = 0
     for account in accounts:
-        for i in range(8):
-            if account['Type'] == i + 1:
-                cost_summation[i] += account['Ammount']
         if account['Type'] == 11:
             income_summation += account['Ammount']
+        elif account['Type'] in ids:
+            cost_summation[ids.index(account['Type'])] += account['Ammount']
 
-    percentages = _pie_chart(["飲食", "生活", "居住", "交通", "娛樂", "醫療", "其他", "投資"], cost_summation, "本月統計")
+    percentages = _pie_chart(labels, cost_summation, "本月統計")
     gcs.upload_blob("asia.artifacts.watermelon-368305.appspot.com", "./accounts-pie-chart.png", f'accounts-pie-chart/pie-chart{tk}.png')
     gcs.make_blob_public("asia.artifacts.watermelon-368305.appspot.com", f'accounts-pie-chart/pie-chart{tk}.png')
     image_url = f'https://storage.googleapis.com/asia.artifacts.watermelon-368305.appspot.com/accounts-pie-chart/pie-chart{tk}.png'
 
-    labels = ["飲食", "生活", "居住", "交通", "娛樂", "醫療", "其他", "投資"]
     contents = []
     for i, label in enumerate(labels):
         contents.append({
@@ -181,7 +184,7 @@ def _pie_chart(index: list, value: list, title: str):
     """生成圓餅圖"""
     non_zero_data = [d for d in value if d != 0]
     non_zero_labels = [l for d, l in zip(value, index) if d != 0]
-    res = ['0.0%'] * 8
+    res = ['0.0%'] * len(index)
 
     fig = plt.figure(figsize=(10, 7))
     patches, labels, percentages = plt.pie(non_zero_data, labels=non_zero_labels, autopct='%1.1f%%', textprops={'fontsize': 24})
