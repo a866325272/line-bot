@@ -36,6 +36,8 @@ EXPTECH_REPORT_API_URLS = [
     "https://api.lb.exptech.dev",
 ]
 SSE_RECONNECT_DELAY = 3  # seconds
+EEW_SSE_READ_TIMEOUT = 60  # 秒；連線靜默超過這個時間視為斷線（偵測「假活著」的連線）
+EEW_POLL_INTERVAL = 5  # seconds — SSE 的備援輪詢，避免 SSE 連線異常時完全漏接速報
 REPORT_POLL_INTERVAL = 60  # seconds
 LAST_EEW_FILE = Path("/opt/earthquake-service/last_eew.json")  # 持久化速報歷史（掛載 volume）
 EEW_HISTORY_MAX = 20  # 最多保留幾筆速報歷史
@@ -155,12 +157,38 @@ def _is_taiwan_eew(eew_item):
 
 
 def _filter_taiwan_eew(event_data):
-    """從 EEW 事件中過濾出台灣相關的速報，回傳 list 或空 list"""
-    if not event_data:
-        return []
-    items = event_data if isinstance(event_data, list) else [event_data]
-    tw_items = [item for item in items if _is_taiwan_eew(item)]
-    return tw_items
+    """從 EEW 事件中過濾出台灣相關的速報。
+
+    ExpTech 的 SSE 除了實際速報，也會推送連線狀態等非速報訊息
+    （例如 {"location": "lb-tpe1"}，沒有 "eq" 欄位）。這類訊息回傳
+    None，呼叫端應忽略、不更動目前的 EEW 狀態；只有 [] 或含 eq 的
+    項目才代表真正的速報狀態更新（[] 代表「目前無速報」）。
+    """
+    if isinstance(event_data, list):
+        items = event_data
+    elif isinstance(event_data, dict) and event_data.get("eq"):
+        items = [event_data]
+    else:
+        return None
+    return [item for item in items if _is_taiwan_eew(item)]
+
+
+def _apply_eew_update(tw_eew, source):
+    """把過濾後的 EEW 結果套用到共享狀態，並在有速報時寫入歷史"""
+    if tw_eew is None:
+        return
+    with state_lock:
+        state["eew"]["data"] = tw_eew
+        state["eew"]["last_update"] = datetime.now(timezone(timedelta(hours=8))).isoformat()
+        if tw_eew:
+            state["eew"]["history"].append({
+                "alert": tw_eew,
+                "time": state["eew"]["last_update"],
+            })
+            state["eew"]["history"] = state["eew"]["history"][-EEW_HISTORY_MAX:]
+            _save_last_eew()
+    if tw_eew:
+        logger.warning(f"[EEW:{source}] ⚠️  台灣地震速報! {json.dumps(tw_eew, ensure_ascii=False)}")
 
 
 # --- SSE Listener: EEW ---
@@ -173,7 +201,7 @@ def eew_listener():
                 EXPTECH_SSE_EEW_URL,
                 headers={"Accept": "text/event-stream", "Cache-Control": "no-cache"},
                 stream=True,
-                timeout=(10, None),  # connect timeout 10s, no read timeout
+                timeout=(10, EEW_SSE_READ_TIMEOUT),
             )
             resp.raise_for_status()
 
@@ -182,29 +210,17 @@ def eew_listener():
             logger.info("[EEW] Connected successfully")
 
             for event_data in parse_sse_stream(resp):
-                # 過濾：只保留台灣地區的 EEW（author=cwa 或震央在台灣範圍內）
                 tw_eew = _filter_taiwan_eew(event_data)
+                if tw_eew is None:
+                    continue
 
-                with state_lock:
-                    state["eew"]["data"] = tw_eew
-                    state["eew"]["last_update"] = datetime.now(timezone(timedelta(hours=8))).isoformat()
-
-                # 診斷 log：收到非空事件但被 filter 擋掉時記錄
+                # 診斷 log：收到非空事件但被 author 黑名單擋掉時記錄
                 if event_data and not tw_eew:
                     items = event_data if isinstance(event_data, list) else [event_data]
                     authors = [item.get("author", "unknown") for item in items if isinstance(item, dict)]
                     logger.info(f"[EEW] Received event (filtered out): authors={authors}")
 
-                # 有台灣 EEW 速報時記錄，追加進歷史（保留最近 EEW_HISTORY_MAX 筆）
-                if tw_eew:
-                    with state_lock:
-                        state["eew"]["history"].append({
-                            "alert": tw_eew,
-                            "time": datetime.now(timezone(timedelta(hours=8))).isoformat(),
-                        })
-                        state["eew"]["history"] = state["eew"]["history"][-EEW_HISTORY_MAX:]
-                        _save_last_eew()
-                    logger.warning(f"[EEW] ⚠️  台灣地震速報! {json.dumps(tw_eew, ensure_ascii=False)}")
+                _apply_eew_update(tw_eew, "SSE")
 
         except Exception as e:
             logger.error(f"[EEW] Connection error: {e}")
@@ -225,7 +241,7 @@ def rts_listener():
                 EXPTECH_SSE_RTS_URL,
                 headers={"Accept": "text/event-stream", "Cache-Control": "no-cache"},
                 stream=True,
-                timeout=(10, None),
+                timeout=(10, EEW_SSE_READ_TIMEOUT),
             )
             resp.raise_for_status()
 
@@ -245,6 +261,20 @@ def rts_listener():
                 state["rts"]["connected"] = False
             logger.info(f"[RTS] Reconnecting in {SSE_RECONNECT_DELAY}s...")
             time.sleep(SSE_RECONNECT_DELAY)
+
+
+# --- EEW Poller (SSE 備援) ---
+def eew_poller():
+    """定期輪詢 EEW REST 快照，當 SSE 連線異常（例如靜默斷線）時仍能補上速報"""
+    while True:
+        try:
+            resp = requests.get(EXPTECH_SSE_EEW_URL, timeout=8)
+            if resp.status_code == 200:
+                tw_eew = _filter_taiwan_eew(resp.json())
+                _apply_eew_update(tw_eew, "Poll")
+        except Exception as e:
+            logger.error(f"[EEW-Poll] error: {e}")
+        time.sleep(EEW_POLL_INTERVAL)
 
 
 # --- Report Poller ---
@@ -372,6 +402,7 @@ def get_latest():
 def start_listeners():
     threads = [
         threading.Thread(target=eew_listener, daemon=True, name="eew-listener"),
+        threading.Thread(target=eew_poller, daemon=True, name="eew-poller"),
         threading.Thread(target=rts_listener, daemon=True, name="rts-listener"),
         threading.Thread(target=report_poller, daemon=True, name="report-poller"),
     ]
