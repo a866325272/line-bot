@@ -21,6 +21,7 @@
         </button>
         <div class="flex gap-2 flex-wrap">
           <button @click="setPreset('thisMonth')" class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">本月</button>
+          <button @click="setPreset('lastMonth')" class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">上月</button>
           <button @click="setPreset('last3')" class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">近3月</button>
           <button @click="setPreset('last6')" class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">近6月</button>
           <button @click="setPreset('thisYear')" class="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">今年</button>
@@ -188,6 +189,13 @@ function setPreset(preset) {
       startDate.value = `${y}-${String(m).padStart(2, '0')}-01`
       endDate.value = formatDate(now)
       break
+    case 'lastMonth': {
+      const s = new Date(y, m - 2, 1)
+      const e = new Date(y, m - 1, 0)
+      startDate.value = formatDate(s)
+      endDate.value = formatDate(e)
+      break
+    }
     case 'last3': {
       const s = new Date(y, m - 3, 1)
       startDate.value = formatDate(s)
